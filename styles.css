@@ -1,0 +1,54 @@
+
+body {
+  font-family: 'Archivo', sans-serif;
+}
+.club-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.club-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.club-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.club-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #212945;
+}
+.tag {
+  background: #52E8E8;
+  color: #212945;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+.meta {
+  margin: 0.2rem 0;
+  color: #444;
+}
+.filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.filter-input, .filter-select {
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+.pagination {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
