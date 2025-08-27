@@ -1,0 +1,47 @@
+{
+  "clubs": [
+    {
+      "id": "2001155",
+      "naam": "Bildtse Badminton Club",
+      "soort": "sportaanbieder non-profit",
+      "subsoort": "badminton",
+      "gemeente": "Waadhoeke",
+      "telefoon": "0518-401495",
+      "email": "secretaris@bildtsebc.nl",
+      "adres": "Steven Huygenstraat 2 A, 9076 AP ST ANNAPAROCHIE",
+      "leden": null,
+      "vrijwilligers": null,
+      "contributie_senior": null,
+      "professional_in_dienst": 0,
+      "vog_verplicht": 1,
+      "aangepast_sporten": 0,
+      "doelgroepen": {
+        "0_4": 0,
+        "4_12": 1,
+        "12_18": 1,
+        "55_plus": 1,
+        "oldstars": 1
+      },
+      "themas": {
+        "heldere_communicatie": 0,
+        "samen_verenigen": 1,
+        "club_voor_iedereen": 0,
+        "aandacht_vitaliteit": 0,
+        "samenwerken_omgeving": 0,
+        "opgeleid_kader": 0,
+        "veilig_sportklimaat": 0,
+        "basis_op_orde": 0
+      },
+      "kenmerken": {
+        "gezonde_kantine": 0,
+        "rookvrij": 1,
+        "eigen_accommodatie": 1,
+        "horecavergunning": 0,
+        "eigen_kantine": 0
+      }
+    }
+  ],
+  "trajecten": [],
+  "cursussen": [],
+  "boekingen": []
+}
