@@ -12,11 +12,11 @@ function renderFilters() {
     <div class="filter-bar">
       <input type="text" id="searchInput" placeholder="🔍 Zoek op naam..." class="filter-input"/>
       <select id="gemeenteFilter" class="filter-select">
-        <option value="">Alle gemeentes</option>
+        <option value="">🌍 Alle gemeentes</option>
         ${uniqueGemeentes.map(g => `<option value="${g}">${g}</option>`).join('')}
       </select>
       <select id="sportFilter" class="filter-select">
-        <option value="">Alle sporten</option>
+        <option value="">🏅 Alle sporten</option>
         ${uniqueSports.map(s => `<option value="${s}">${s}</option>`).join('')}
       </select>
     </div>
