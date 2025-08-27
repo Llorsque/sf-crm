@@ -1,15 +1,18 @@
 export default async function(app) {
-  const res = await fetch('../db.json');
-  const data = await res.json();
-  const clubs = data.clubs || [];
+  const res = await fetch('http://localhost:3000/clubs');
+  const clubs = await res.json();
   let html = `<h2>CRM Overzicht</h2>`;
-  html += `<div class='card'><p>Totaal verenigingen: ${clubs.length}</p></div>`;
+  html += `<button class='add-btn'>+ Voeg club toe</button>`;
   clubs.forEach(club => {
     html += `<div class='card'>
       <h3>${club.naam}</h3>
       <p><strong>Sport:</strong> ${club.subsoort || '-'}<br/>
       <strong>Gemeente:</strong> ${club.gemeente || '-'}<br/>
       <strong>Leden:</strong> ${club.leden || '-'}</p>
+      <div class="action-buttons">
+        <button class="edit-btn">Bewerken</button>
+        <button class="delete-btn">Verwijderen</button>
+      </div>
     </div>`;
   });
   app.innerHTML = html;

@@ -1,7 +1,7 @@
 {
   "clubs": [
     {
-      "id": "2001155",
+      "id": 2001155,
       "naam": "Bildtse Badminton Club",
       "soort": "sportaanbieder non-profit",
       "subsoort": "badminton",
@@ -14,7 +14,7 @@
       "contributie_senior": 150
     },
     {
-      "id": "2001156",
+      "id": 2001156,
       "naam": "VV Oerterp",
       "soort": "sportaanbieder non-profit",
       "subsoort": "voetbal",
