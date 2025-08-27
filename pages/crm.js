@@ -6,19 +6,12 @@ let currentPage = 1
 const pageSize = 24
 
 function renderFilters() {
-  const uniqueGemeentes = [...new Set(clubs.map(c => c['Vestigingsgemeente']).filter(Boolean))].sort()
-  const uniqueSports = [...new Set(clubs.map(c => c['Subsoort organisatie']).filter(Boolean))].sort()
   return `
     <div class="filter-bar">
       <input type="text" id="searchInput" placeholder="🔍 Zoek op naam..." class="filter-input"/>
-      <select id="gemeenteFilter" class="filter-select">
-        <option value="">🌍 Alle gemeentes</option>
-        ${uniqueGemeentes.map(g => `<option value="${g}">${g}</option>`).join('')}
-      </select>
-      <select id="sportFilter" class="filter-select">
-        <option value="">🏅 Alle sporten</option>
-        ${uniqueSports.map(s => `<option value="${s}">${s}</option>`).join('')}
-      </select>
+      <select id="gemeenteFilter" class="filter-select"></select>
+      <select id="sportFilter" class="filter-select"></select>
+      <button id="refreshBtn" class="btn-accent">🔄 Refresh</button>
     </div>
   `
 }
@@ -30,23 +23,36 @@ function renderClubs() {
   html += pageClubs.map(club => `
     <div class="club-card">
       <div class="club-header">
-        <h3>${club['Naam']}</h3>
+        <h3>${club['Naam'] || 'Onbekend'}</h3>
         <span class="tag">${club['Subsoort organisatie'] || '-'}</span>
       </div>
       <p class="meta">🏙️ ${club['Vestigingsgemeente'] || '-'}</p>
       <p class="meta">👥 ${club['Aantal leden'] || '-'}</p>
       <div class="details">
-        <p>📍 ${club['Postadres'] || ''}</p>
         <p>📞 ${club['Telefoonnr.'] || ''}</p>
         <p>✉️ ${club['E-mail'] || ''}</p>
-        <p>🏢 ${club['Soort Organisatie'] || ''}</p>
       </div>
+      <button class="btn-details" onclick='showDetails(${JSON.stringify(club)})'>Details</button>
     </div>
   `).join('')
   html += '</div>'
   if (!pageClubs.length) html = "<p>Geen resultaten gevonden.</p>"
   html += renderPagination()
   document.getElementById('results').innerHTML = html
+}
+
+window.showDetails = (club) => {
+  const panel = document.createElement('div')
+  panel.className = 'detail-panel'
+  panel.innerHTML = `
+    <div class="panel-content">
+      <button class="close-btn" onclick="this.parentElement.parentElement.remove()">✖</button>
+      <h3>${club['Naam']}</h3>
+      <div class="detail-grid">
+        ${Object.entries(club).map(([k,v]) => `<p><strong>${k}</strong>: ${v||''}</p>`).join('')}
+      </div>
+    </div>`
+  document.body.appendChild(panel)
 }
 
 function renderPagination() {
@@ -73,26 +79,34 @@ function applyFilters() {
   renderClubs()
 }
 
-export default async function(app) {
-  app.innerHTML = "<h2>CRM Overzicht</h2><p>Data laden...</p><div id='filters'></div><div id='results'></div>"
-  const { data, error } = await supabase
-    .from('clubs')
-    .select('Nr., Naam, Soort Organisatie, Subsoort organisatie, Vestigingsgemeente, Telefoonnr., E-mail, Postadres, Aantal leden')
-    .limit(500)
-
+async function loadData() {
+  document.getElementById('results').innerHTML = "<p>Data laden...</p>"
+  const { data, error } = await supabase.from('clubs').select('*').limit(500)
   if (error) {
-    app.innerHTML = `<p>Fout bij laden: ${error.message}</p>`
+    document.getElementById('results').innerHTML = `<p>Fout bij laden: ${error.message}</p>`
     return
   }
-
+  console.log("Supabase data:", data)
   clubs = data
   filteredClubs = clubs
-  document.getElementById('filters').innerHTML = renderFilters()
+
+  const gemeentes = [...new Set(clubs.map(c => c['Vestigingsgemeente']).filter(Boolean))].sort()
+  const sporten = [...new Set(clubs.map(c => c['Subsoort organisatie']).filter(Boolean))].sort()
+  document.getElementById('gemeenteFilter').innerHTML = '<option value="">🌍 Alle gemeentes</option>' + gemeentes.map(g=>`<option value="${g}">${g}</option>`).join('')
+  document.getElementById('sportFilter').innerHTML = '<option value="">🏅 Alle sporten</option>' + sporten.map(s=>`<option value="${s}">${s}</option>`).join('')
+
   renderClubs()
+}
+
+export default async function(app) {
+  app.innerHTML = "<h2>CRM Overzicht</h2><div id='filters'></div><div id='results'></div>"
+  document.getElementById('filters').innerHTML = renderFilters()
+  await loadData()
 
   document.getElementById('searchInput').addEventListener('input', applyFilters)
   document.getElementById('gemeenteFilter').addEventListener('change', applyFilters)
   document.getElementById('sportFilter').addEventListener('change', applyFilters)
+  document.getElementById('refreshBtn').addEventListener('click', loadData)
 
   document.addEventListener('click', (e) => {
     if (e.target.id==='prevPage' && currentPage>1) {currentPage--; renderClubs();}

@@ -1,36 +1,26 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Sport Fryslân CRM Prototype</title>
-  <link rel="stylesheet" href="src/styles.css" />
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="logo">
-        <h2>Sport Fryslân</h2>
-        <p class="subtitle">CRM</p>
-      </div>
-      <nav>
-        <button onclick="loadPage('crm')" class="nav-btn">CRM</button>
-        <button onclick="loadPage('dashboard')" class="nav-btn">Dashboard</button>
-        <button onclick="loadPage('trajecten')" class="nav-btn">Trajecten</button>
-        <button onclick="loadPage('vergelijk')" class="nav-btn">Vergelijk</button>
-        <button onclick="loadPage('cursussen')" class="nav-btn">Cursussen</button>
-        <button onclick="loadPage('ntb')" class="nav-btn">NTB</button>
-      </nav>
-    </aside>
-    <main class="content">
-      <header class="topbar">
-        <h1>Sport Fryslân CRM Prototype</h1>
-      </header>
-      <section id="app">
-        <p>Kies een module om te starten.</p>
-      </section>
-    </main>
+  <div id="sidebar">
+    <div class="logo">🏆 SF CRM</div>
+    <nav>
+      <a href="#" onclick="loadPage('crm')">📊 CRM</a>
+      <a href="#" onclick="loadPage('dashboard')">📈 Dashboard</a>
+      <a href="#" onclick="loadPage('trajecten')">🛠️ Trajecten</a>
+      <a href="#" onclick="loadPage('vergelijk')">⚖️ Vergelijk</a>
+      <a href="#" onclick="loadPage('cursussen')">🎓 Cursussen</a>
+      <a href="#" onclick="loadPage('ntb')">➕ NTB</a>
+    </nav>
   </div>
-  <script src="src/app.js"></script>
+  <div id="main">
+    <div id="app">Welkom bij Sport Fryslân CRM Prototype</div>
+  </div>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

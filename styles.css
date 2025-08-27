@@ -3,20 +3,47 @@ body {
   font-family: 'Archivo', sans-serif;
   background: #f4f6fb;
   margin: 0;
-  padding: 2rem;
   color: #212945;
+  display: flex;
+}
+#sidebar {
+  width: 240px;
+  background: #212945;
+  color: #fff;
+  height: 100vh;
+  padding: 2rem 1rem;
+}
+#sidebar .logo {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+}
+#sidebar nav a {
+  display: block;
+  color: #fff;
+  text-decoration: none;
+  padding: 0.8rem 0;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: color 0.3s;
+}
+#sidebar nav a:hover {
+  color: #52E8E8;
+}
+#main {
+  flex: 1;
+  padding: 2rem;
 }
 h2 {
-  color: #212945;
   font-size: 2rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 .filter-bar {
   display: flex;
   gap: 1rem;
   margin-bottom: 2rem;
   background: #fff;
-  padding: 1rem 1.5rem;
+  padding: 1rem;
   border-radius: 14px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.06);
   position: sticky;
@@ -28,76 +55,126 @@ h2 {
   border-radius: 10px;
   border: 1px solid #ddd;
   font-size: 1rem;
-  transition: all 0.2s;
+  flex: 1;
 }
-.filter-input:focus, .filter-select:focus {
-  border-color: #52E8E8;
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(82,232,232,0.3);
+.btn-accent {
+  background: #52E8E8;
+  border: none;
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.btn-accent:hover {
+  background: #40cfcf;
 }
 .club-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 2rem;
+  gap: 1.5rem;
 }
 .club-card {
-  background: #fff;
+  background: linear-gradient(135deg, #fff, #f9fbfc);
   border-radius: 20px;
   padding: 1.5rem;
   box-shadow: 0 4px 14px rgba(0,0,0,0.1);
-  transition: all 0.3s ease;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 .club-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-5px) scale(1.02);
   box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-  background: linear-gradient(145deg, #ffffff, #f9f9f9);
 }
 .club-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.8rem;
 }
 .club-header h3 {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   color: #212945;
 }
 .tag {
   background: #52E8E8;
   color: #212945;
-  padding: 0.3rem 0.8rem;
-  border-radius: 14px;
-  font-size: 0.85rem;
-  font-weight: bold;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
 }
 .meta {
-  margin: 0.3rem 0;
+  margin: 0.2rem 0;
   color: #444;
-  font-size: 0.95rem;
 }
 .details {
-  margin-top: 1rem;
+  margin-top: 0.8rem;
   font-size: 0.9rem;
   color: #555;
-  line-height: 1.4;
+}
+.btn-details {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #212945;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.btn-details:hover {
+  background: #52E8E8;
+  color: #212945;
+}
+.detail-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 100%;
+  background: #fff;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.2);
+  z-index: 100;
+  animation: slideIn 0.3s ease-out;
+  overflow-y: auto;
+}
+@keyframes slideIn {
+  from { right: -400px; }
+  to { right: 0; }
+}
+.panel-content {
+  padding: 1.5rem;
+}
+.close-btn {
+  float: right;
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.detail-grid {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 .pagination {
-  margin-top: 2.5rem;
+  margin-top: 2rem;
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 .pagination button {
-  padding: 0.6rem 1.2rem;
-  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
   border: none;
   background: #212945;
   color: #fff;
   cursor: pointer;
-  font-size: 0.95rem;
-  transition: background 0.2s;
 }
 .pagination button:hover:not(:disabled) {
   background: #52E8E8;
