@@ -1,10 +1,11 @@
-function loadPage(page) {
+async function loadPage(page) {
   const app = document.getElementById('app');
   app.innerHTML = `<p>${page} wordt geladen...</p>`;
-  import(`./pages/${page}.js`).then(module => {
+  try {
+    const module = await import(`./pages/${page}.js`);
     app.innerHTML = '';
     module.default(app);
-  }).catch(err => {
+  } catch (err) {
     app.innerHTML = `<p>Module ${page} niet gevonden.</p>`;
-  });
+  }
 }

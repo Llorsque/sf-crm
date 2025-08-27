@@ -1,3 +1,16 @@
-export default function(app) {
-  app.innerHTML = `<div class='card'><h2>Crm</h2><p>Deze module is nog leeg.</p></div>`;
+export default async function(app) {
+  const res = await fetch('../db.json');
+  const data = await res.json();
+  const clubs = data.clubs || [];
+  let html = `<h2>CRM Overzicht</h2>`;
+  html += `<div class='card'><p>Totaal verenigingen: ${clubs.length}</p></div>`;
+  clubs.forEach(club => {
+    html += `<div class='card'>
+      <h3>${club.naam}</h3>
+      <p><strong>Sport:</strong> ${club.subsoort || '-'}<br/>
+      <strong>Gemeente:</strong> ${club.gemeente || '-'}<br/>
+      <strong>Leden:</strong> ${club.leden || '-'}</p>
+    </div>`;
+  });
+  app.innerHTML = html;
 }

@@ -7,21 +7,30 @@
   <link rel="stylesheet" href="../src/styles.css" />
 </head>
 <body>
-  <header>
-    <img src="assets/logo.png" alt="Logo" class="logo-small" />
-    <h1>Sport Fryslân CRM Prototype</h1>
-  </header>
-  <nav>
-    <button onclick="loadPage('crm')">CRM</button>
-    <button onclick="loadPage('dashboard')">Dashboard</button>
-    <button onclick="loadPage('trajecten')">Trajecten</button>
-    <button onclick="loadPage('vergelijk')">Vergelijk</button>
-    <button onclick="loadPage('cursussen')">Cursussen</button>
-    <button onclick="loadPage('ntb')">NTB</button>
-  </nav>
-  <main id="app">
-    <p>Kies een module om te starten.</p>
-  </main>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="assets/logo.png" alt="Logo" />
+        <h2>SF CRM</h2>
+      </div>
+      <nav>
+        <button onclick="loadPage('crm')">CRM</button>
+        <button onclick="loadPage('dashboard')">Dashboard</button>
+        <button onclick="loadPage('trajecten')">Trajecten</button>
+        <button onclick="loadPage('vergelijk')">Vergelijk</button>
+        <button onclick="loadPage('cursussen')">Cursussen</button>
+        <button onclick="loadPage('ntb')">NTB</button>
+      </nav>
+    </aside>
+    <main class="content">
+      <header class="topbar">
+        <h1>Sport Fryslân CRM Prototype</h1>
+      </header>
+      <section id="app">
+        <p>Kies een module om te starten.</p>
+      </section>
+    </main>
+  </div>
   <script src="../src/app.js"></script>
 </body>
 </html>

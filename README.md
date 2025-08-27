@@ -1,3 +1,3 @@
 # Sport Fryslân CRM Prototype
 
-Dit is het prototype van het CRM-systeem.
+Met sidebar layout en CRM module gekoppeld aan db.json.
