@@ -2,7 +2,6 @@ const app = document.getElementById('app');
 const nav = document.getElementById('nav');
 const statusEl = document.getElementById('sb-status');
 
-// Sidebar navigation
 nav.addEventListener('click', (e) => {
   const link = e.target.closest('a[data-page]');
   if (!link) return;
@@ -10,7 +9,6 @@ nav.addEventListener('click', (e) => {
   loadPage(link.dataset.page);
 });
 
-// Refresh current module
 document.getElementById('btn-refresh').addEventListener('click', () => {
   const active = nav.querySelector('a.active')?.dataset.page || 'crm';
   loadPage(active);
@@ -19,7 +17,7 @@ document.getElementById('btn-refresh').addEventListener('click', () => {
 async function loadPage(page) {
   app.innerHTML = `<p class="muted">Module <strong>${page}</strong> wordt geladen…</p>`;
   try {
-    const module = await import(`./pages/${page}.js`);
+    const module = await import(`./pages/${page}.js?v=3`);
     await module.default(app);
   } catch (err) {
     console.error('Module load error:', err);
@@ -27,7 +25,6 @@ async function loadPage(page) {
   }
 }
 
-// Supabase health check
 import { supabase } from './supabaseClient.js';
 async function checkSupabase() {
   try {

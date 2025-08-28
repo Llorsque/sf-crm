@@ -1,4 +1,3 @@
-// ESM import via CDN (werkt op GitHub Pages zonder bundler)
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
 const supabaseUrl = "https://bpdoddqfwsjfvwvvtadt.supabase.co";
