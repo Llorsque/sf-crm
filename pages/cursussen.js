@@ -1,6 +1,3 @@
-export default function(app) {
-  app.innerHTML = `
-    <h2>Cursussen</h2>
-    <p>Hier komt straks de module <strong>cursussen</strong>.</p>
-  `;
+export default async function(app){ 
+  app.innerHTML = `<div class="card"><h2>Cursussen</h2><p>Module cursussen komt hier.</p></div>`; 
 }

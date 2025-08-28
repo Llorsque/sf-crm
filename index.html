@@ -1,21 +1,36 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sport Fryslân CRM</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20250828" />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div id="sidebar">
-    <div class="logo">🏆 SF CRM</div>
-    <nav>
-      <a href="#" onclick="loadPage('crm')">📊 CRM</a>
+  <aside id="sidebar">
+    <div class="logo">🏆 Sport Fryslân</div>
+    <nav id="nav">
+      <a data-page="crm" class="active">📊 CRM</a>
+      <a data-page="dashboard">📈 Dashboard</a>
+      <a data-page="trajecten">🛠️ Trajecten</a>
+      <a data-page="vergelijk">⚖️ Vergelijk</a>
+      <a data-page="cursussen">🎓 Cursussen</a>
+      <a data-page="ntb">➕ NTB</a>
     </nav>
-  </div>
-  <div id="main">
-    <div id="app">Welkom bij CRM</div>
-  </div>
-  <script type="module" src="app.js"></script>
+    <div id="status">Status: <span id="sb-status">controleren…</span></div>
+  </aside>
+
+  <main id="main">
+    <header class="topbar">
+      <h1>Sport Fryslân CRM Prototype</h1>
+      <div class="actions">
+        <button id="btn-refresh" class="btn-accent" title="Herlaad huidige module">🔄 Refresh</button>
+      </div>
+    </header>
+    <section id="app">Laden…</section>
+  </main>
+
+  <script type="module" src="app.js?v=20250828"></script>
 </body>
 </html>
