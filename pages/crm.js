@@ -15,10 +15,11 @@ export default async function mount(app){
     <div class="counter" id="counter"></div>
     <div id="list" class="grid"></div>
     <div id="pager" class="pagination"></div>
-    <aside id="drawer" class="offscreen">
+    <div id="overlay" class="overlay"></div>
+    <aside id="drawer" class="offscreen" aria-hidden="true">
       <div class="head">
         <h3 id="drawer-title">Details</h3>
-        <button id="drawer-close" class="btn-accent">Sluit</button>
+        <button id="drawer-close" class="icon-btn" aria-label="Sluiten">✖</button>
       </div>
       <div class="body"><div id="kv" class="kv"></div></div>
     </aside>
@@ -30,22 +31,27 @@ export default async function mount(app){
 
   const $ = (sel)=> app.querySelector(sel);
 
-  $('#drawer-close').onclick = () => $('#drawer').classList.remove('open');
-
   // --- Helpers ---
+  function titleCase(s=''){
+    return s.toString().toLowerCase().replace(/\b([a-zà-ÿ])/g, m => m.toUpperCase());
+  }
+  function profitLabel(row){
+    const val = (row['Soort Organisatie'] || '').toString().toLowerCase();
+    if (!val) return '-';
+    if (val.includes('non') || val.includes('vereniging') || val.includes('stichting') || val.includes('ngo')) return 'Non-profit';
+    if (val.includes('profit') || val.includes('bv') || val.includes('b.v') || val.includes('vof')) return 'Profit';
+    return titleCase(val);
+  }
   function extractPlaats(postadres=''){
     if (!postadres) return '';
-    // veel NL formats bevatten postcode (1234 AB Plaats)
     const m = postadres.match(/\b\d{4}\s?[A-Z]{2}\s+(.+)/i);
     if (m) return m[1].trim();
-    // of laatste segment na komma/regel
     const parts = postadres.split(/[;\n,]/).map(s=>s.trim()).filter(Boolean);
     return parts.length ? parts[parts.length-1] : '';
   }
 
   const COLUMNS = '"Nr.", "Naam", "Soort Organisatie", "Subsoort organisatie", "Vestigingsgemeente", "Telefoonnr.", "E-mail", "Postadres", "Aantal leden"';
 
-  // Supabase haalt max 1000 per request -> chunked fetch tot alles binnen is
   async function fetchAll(){
     const step = 1000;
     let from = 0;
@@ -63,9 +69,7 @@ export default async function mount(app){
         from += step;
       }
       if (!data || data.length < step) break;
-      // Loop door tot alles binnen is
     }
-    // verrijk met afgeleide plaats
     all.forEach(r => { r.__plaats = extractPlaats(r['Postadres']); });
     return { rows: all, total: total ?? all.length };
   }
@@ -77,9 +81,9 @@ export default async function mount(app){
       if (r['Subsoort organisatie']) sSet.add(r['Subsoort organisatie']);
       if (r.__plaats) pSet.add(r.__plaats);
     });
-    $('#gemeente').innerHTML = '<option value="">🌍 Alle gemeentes</option>' + [...gSet].sort().map(v=>`<option>${v}</option>`).join('');
-    $('#sport').innerHTML = '<option value="">🏅 Alle sporten</option>' + [...sSet].sort().map(v=>`<option>${v}</option>`).join('');
-    $('#plaats').innerHTML = '<option value="">🏠 Alle plaatsen</option>' + [...pSet].sort().map(v=>`<option>${v}</option>`).join('');
+    $('#gemeente').innerHTML = '<option value="">🌍 Alle gemeentes</option>' + [...gSet].sort().map(v=>`<option value="${v}">${v}</option>`).join('');
+    $('#sport').innerHTML = '<option value="">🏅 Alle sporten</option>' + [...sSet].sort().map(v=>`<option value="${v}">${titleCase(v)}</option>`).join('');
+    $('#plaats').innerHTML = '<option value="">🏠 Alle plaatsen</option>' + [...pSet].sort().map(v=>`<option value="${v}">${v}</option>`).join('');
   }
 
   function updateCounter(){
@@ -110,10 +114,9 @@ export default async function mount(app){
     $('#list').innerHTML = pageRows.map(r => `
       <article class="card" data-id="${r['Nr.']}">
         <h3>${r['Naam'] || 'Onbekend'}</h3>
-        <div class="meta">🏅 ${r['Subsoort organisatie'] || '-'}</div>
+        <div class="meta">🏅 ${titleCase(r['Subsoort organisatie'] || '-')}</div>
         <div class="meta">🏙️ ${r['Vestigingsgemeente'] || '-'}</div>
-        <div class="meta">📍 ${r.__plaats || '-'}</div>
-        <div class="meta">👥 ${r['Aantal leden'] || '-'}</div>
+        <div class="meta">💼 ${profitLabel(r)}</div>
         <button class="btn-accent btn-more" data-id="${r['Nr.']}">Details</button>
       </article>
     `).join('');
@@ -138,24 +141,27 @@ export default async function mount(app){
 
   function openDrawer(row){
     if (!row) return;
+    const drawer = $('#drawer');
+    const overlay = $('#overlay');
     document.getElementById('drawer-title').textContent = row['Naam'] || 'Details';
     const entries = Object.entries(row);
     document.getElementById('kv').innerHTML = entries.map(([k,v]) => `<div><strong>${k}</strong></div><div>${v ?? ''}</div>`).join('');
-    document.getElementById('drawer').classList.add('open');
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    overlay.classList.add('show');
+  }
+  function closeDrawer(){
+    const drawer = $('#drawer');
+    const overlay = $('#overlay');
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+    overlay.classList.remove('show');
   }
 
-  function exportCsv(){
-    const rows = state.filtered.length ? state.filtered : state.rows;
-    if (!rows.length) return;
-    const headers = Object.keys(rows[0]);
-    const esc = (val) => '"' + String(val ?? '').replace(/"/g,'""') + '"';
-    const csv = [headers.join(',')].concat(rows.map(r => headers.map(h => esc(r[h])).join(','))).join('\n');
-    const blob = new Blob([csv], { type:'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'clubs_export.csv'; a.click();
-    URL.revokeObjectURL(url);
-  }
+  // Close interactions
+  $('#drawer-close').addEventListener('click', closeDrawer);
+  $('#overlay').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e)=>{ if (e.key==='Escape') closeDrawer(); });
 
   // events
   $('#q').addEventListener('input', applyFilters);
@@ -180,5 +186,18 @@ export default async function mount(app){
       console.error(e);
       $('#list').innerHTML = '<div class="alert">Fout bij laden van data.</div>';
     }
+  }
+
+  function exportCsv(){
+    const rows = state.filtered.length ? state.filtered : state.rows;
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]);
+    const esc = (val) => '"' + String(val ?? '').replace(/"/g,'""') + '"';
+    const csv = [headers.join(',')].concat(rows.map(r => headers.map(h => esc(r[h])).join(','))).join('\n');
+    const blob = new Blob([csv], { type:'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'clubs_export.csv'; a.click();
+    URL.revokeObjectURL(url);
   }
 }

@@ -60,12 +60,16 @@ h1{ font-size:1.4rem; margin:0 }
 .pagination button[disabled]{ background:#b7bccb; cursor:not-allowed }
 
 .alert{ background:#fff1f1; color:#8b1d1d; border:1px solid #ffd1d1; padding:12px; border-radius:12px }
-.offscreen{ position:fixed; inset:auto 0 0 auto; width:420px; right:0; top:0; bottom:0; background:#fff; box-shadow:-8px 0 24px rgba(0,0,0,.2); transform:translateX(100%); transition:.3s transform }
+
+/* Drawer + overlay */
+.offscreen{ position:fixed; inset:auto 0 0 auto; width:420px; right:0; top:0; bottom:0; background:#fff; box-shadow:-8px 0 24px rgba(0,0,0,.2); transform:translateX(100%); transition:.3s transform; z-index:1001 }
 .offscreen.open{ transform:none }
 .offscreen .head{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #eee }
 .offscreen .body{ padding:16px; max-height:calc(100vh - 56px); overflow:auto }
 .kv{ display:grid; grid-template-columns: 1fr 2fr; gap:8px; font-size:.95rem }
 .kv div{ padding:4px 0; border-bottom:1px dashed #eee }
 .kv strong{ color:#141a2e }
+.icon-btn{ background:transparent; border:0; font-size:1.2rem; cursor:pointer; padding:6px 8px }
 
-.counter{ margin:8px 0 16px 0; color:var(--muted); font-size:0.95rem }
+.overlay{ position:fixed; inset:0; background:rgba(0,0,0,.35); opacity:0; pointer-events:none; transition:.2s opacity; z-index:1000 }
+.overlay.show{ opacity:1; pointer-events:auto }

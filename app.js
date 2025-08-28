@@ -17,7 +17,7 @@ document.getElementById('btn-refresh').addEventListener('click', () => {
 async function loadPage(page) {
   app.innerHTML = `<p class="muted">Module <strong>${page}</strong> wordt geladen…</p>`;
   try {
-    const module = await import(`./pages/${page}.js?v=3`);
+    const module = await import(`./pages/${page}.js?v=4`);
     await module.default(app);
   } catch (err) {
     console.error('Module load error:', err);
