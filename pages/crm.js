@@ -4,14 +4,16 @@ export default async function mount(app){
   app.innerHTML = `
     <div class="filter-bar">
       <input id="q" class="filter-input" placeholder="🔍 Zoek op naam…">
-      <select id="gemeente" class="filter-select"><option value="">🌍 Alle gemeentes</option></select>
-      <select id="plaats" class="filter-select"><option value="">🏠 Alle plaatsen</option></select>
-      <select id="sport" class="filter-select"><option value="">🏅 Alle sporten</option></select>
+      <select id="gemeente" class="filter-select" multiple title="Selecteer meerdere met Ctrl/⌘"></select>
+      <select id="plaats" class="filter-select" multiple title="Selecteer meerdere met Ctrl/⌘"></select>
+      <select id="sport" class="filter-select" multiple title="Selecteer meerdere met Ctrl/⌘"></select>
       <div class="controls">
-        <button id="export" class="btn-accent">⬇️ Export CSV</button>
-        <button id="reload" class="btn-accent">🔄 Vernieuwen</button>
+        <button id="clear" class="btn-accent" title="Wis filters">🧹 Wis</button>
+        <button id="export" class="btn-accent">⬇️ Export</button>
+        <button id="reload" class="btn-accent">🔄 Vernieuw</button>
       </div>
     </div>
+    <div class="helper">Tip: houd <strong>Ctrl</strong> (Windows) of <strong>⌘</strong> (Mac) ingedrukt om meerdere opties te selecteren.</div>
     <div class="counter" id="counter"></div>
     <div id="list" class="grid"></div>
     <div id="pager" class="pagination"></div>
@@ -49,7 +51,6 @@ export default async function mount(app){
     const parts = postadres.split(/[;\n,]/).map(s=>s.trim()).filter(Boolean);
     return parts.length ? parts[parts.length-1] : '';
   }
-
   const COLUMNS = '"Nr.", "Naam", "Soort Organisatie", "Subsoort organisatie", "Vestigingsgemeente", "Telefoonnr.", "E-mail", "Postadres", "Aantal leden"';
 
   async function fetchAll(){
@@ -74,6 +75,10 @@ export default async function mount(app){
     return { rows: all, total: total ?? all.length };
   }
 
+  function setOptions(sel, arr, format=(v)=>v){
+    sel.innerHTML = arr.map(v=>`<option value="${v}">${format(v)}</option>`).join('');
+  }
+
   function hydrateFilters(){
     const gSet = new Set(), sSet = new Set(), pSet = new Set();
     state.rows.forEach(r => {
@@ -81,9 +86,13 @@ export default async function mount(app){
       if (r['Subsoort organisatie']) sSet.add(r['Subsoort organisatie']);
       if (r.__plaats) pSet.add(r.__plaats);
     });
-    $('#gemeente').innerHTML = '<option value="">🌍 Alle gemeentes</option>' + [...gSet].sort().map(v=>`<option value="${v}">${v}</option>`).join('');
-    $('#sport').innerHTML = '<option value="">🏅 Alle sporten</option>' + [...sSet].sort().map(v=>`<option value="${v}">${titleCase(v)}</option>`).join('');
-    $('#plaats').innerHTML = '<option value="">🏠 Alle plaatsen</option>' + [...pSet].sort().map(v=>`<option value="${v}">${v}</option>`).join('');
+    setOptions($('#gemeente'), [...gSet].sort());
+    setOptions($('#sport'), [...sSet].sort(), titleCase);
+    setOptions($('#plaats'), [...pSet].sort());
+  }
+
+  function vals(sel){
+    return Array.from(sel.selectedOptions).map(o=>o.value);
   }
 
   function updateCounter(){
@@ -92,14 +101,14 @@ export default async function mount(app){
 
   function applyFilters(){
     const q = $('#q').value.trim().toLowerCase();
-    const g = $('#gemeente').value;
-    const s = $('#sport').value;
-    const p = $('#plaats').value;
+    const gs = vals($('#gemeente'));
+    const ss = vals($('#sport'));
+    const ps = vals($('#plaats'));
     state.filtered = state.rows.filter(r => {
       const okQ = !q || (r['Naam']||'').toLowerCase().includes(q);
-      const okG = !g || r['Vestigingsgemeente']===g;
-      const okS = !s || r['Subsoort organisatie']===s;
-      const okP = !p || r.__plaats===p;
+      const okG = gs.length===0 || gs.includes(r['Vestigingsgemeente']);
+      const okS = ss.length===0 || ss.includes(r['Subsoort organisatie']);
+      const okP = ps.length===0 || ps.includes(r.__plaats);
       return okQ && okG && okS && okP;
     });
     state.page = 1;
@@ -141,8 +150,8 @@ export default async function mount(app){
 
   function openDrawer(row){
     if (!row) return;
-    const drawer = $('#drawer');
-    const overlay = $('#overlay');
+    const drawer = document.getElementById('drawer');
+    const overlay = document.getElementById('overlay');
     document.getElementById('drawer-title').textContent = row['Naam'] || 'Details';
     const entries = Object.entries(row);
     document.getElementById('kv').innerHTML = entries.map(([k,v]) => `<div><strong>${k}</strong></div><div>${v ?? ''}</div>`).join('');
@@ -151,31 +160,38 @@ export default async function mount(app){
     overlay.classList.add('show');
   }
   function closeDrawer(){
-    const drawer = $('#drawer');
-    const overlay = $('#overlay');
+    const drawer = document.getElementById('drawer');
+    const overlay = document.getElementById('overlay');
     drawer.classList.remove('open');
     drawer.setAttribute('aria-hidden', 'true');
     overlay.classList.remove('show');
   }
 
-  // Close interactions
-  $('#drawer-close').addEventListener('click', closeDrawer);
-  $('#overlay').addEventListener('click', closeDrawer);
+  // events
+  document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+  document.getElementById('overlay').addEventListener('click', closeDrawer);
   document.addEventListener('keydown', (e)=>{ if (e.key==='Escape') closeDrawer(); });
 
-  // events
-  $('#q').addEventListener('input', applyFilters);
-  $('#gemeente').addEventListener('change', applyFilters);
-  $('#sport').addEventListener('change', applyFilters);
-  $('#plaats').addEventListener('change', applyFilters);
-  $('#reload').addEventListener('click', init);
-  $('#export').addEventListener('click', exportCsv);
+  document.getElementById('q').addEventListener('input', applyFilters);
+  document.getElementById('gemeente').addEventListener('change', applyFilters);
+  document.getElementById('sport').addEventListener('change', applyFilters);
+  document.getElementById('plaats').addEventListener('change', applyFilters);
+  document.getElementById('reload').addEventListener('click', init);
+  document.getElementById('export').addEventListener('click', exportCsv);
+  document.getElementById('clear').addEventListener('click', () => {
+    document.getElementById('q').value = '';
+    ['gemeente','sport','plaats'].forEach(id => {
+      const sel = document.getElementById(id);
+      Array.from(sel.options).forEach(o => o.selected = false);
+    });
+    applyFilters();
+  });
 
   // initial
   await init();
 
   async function init(){
-    $('#list').innerHTML = '<p class="muted">Data laden…</p>';
+    document.getElementById('list').innerHTML = '<p class="muted">Data laden…</p>';
     try{
       const { rows, total } = await fetchAll();
       state.rows = rows;
@@ -184,7 +200,7 @@ export default async function mount(app){
       applyFilters();
     }catch(e){
       console.error(e);
-      $('#list').innerHTML = '<div class="alert">Fout bij laden van data.</div>';
+      document.getElementById('list').innerHTML = '<div class="alert">Fout bij laden van data.</div>';
     }
   }
 
