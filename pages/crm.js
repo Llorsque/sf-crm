@@ -4,16 +4,17 @@ export default async function mount(app){
   app.innerHTML = `
     <div class="filter-bar">
       <input id="q" class="filter-input" placeholder="🔍 Zoek op naam…">
-      <select id="gemeente" class="filter-select" multiple title="Selecteer meerdere met Ctrl/⌘"></select>
-      <select id="plaats" class="filter-select" multiple title="Selecteer meerdere met Ctrl/⌘"></select>
-      <select id="sport" class="filter-select" multiple title="Selecteer meerdere met Ctrl/⌘"></select>
+      <div id="dd-gemeente" class="dd"></div>
+      <div id="dd-plaats" class="dd"></div>
+      <div id="dd-sport" class="dd"></div>
+      <div id="dd-profit" class="dd"></div>
       <div class="controls">
         <button id="clear" class="btn-accent" title="Wis filters">🧹 Wis</button>
         <button id="export" class="btn-accent">⬇️ Export</button>
         <button id="reload" class="btn-accent">🔄 Vernieuw</button>
       </div>
     </div>
-    <div class="helper">Tip: houd <strong>Ctrl</strong> (Windows) of <strong>⌘</strong> (Mac) ingedrukt om meerdere opties te selecteren.</div>
+    <div class="helper">Klik op een filter om opties te kiezen. Gebruik het zoekveld binnen de dropdown om snel te filteren.</div>
     <div class="counter" id="counter"></div>
     <div id="list" class="grid"></div>
     <div id="pager" class="pagination"></div>
@@ -40,8 +41,10 @@ export default async function mount(app){
   function profitLabel(row){
     const val = (row['Soort Organisatie'] || '').toString().toLowerCase();
     if (!val) return '-';
-    if (val.includes('non') || val.includes('vereniging') || val.includes('stichting') || val.includes('ngo')) return 'Non-profit';
-    if (val.includes('profit') || val.includes('bv') || val.includes('b.v') || val.includes('vof')) return 'Profit';
+    const np = ['non','vereniging','stichting','ngo','vzw','sportbond','vereniging ']; // vereniging with space catches many
+    const pf = ['profit','bv','b.v','vof','v.o.f','eenmanszaak','zzp','maatschap','cv','n.v','nv','holding','onderneming','bedrijf'];
+    if (np.some(k => val.includes(k))) return 'Non-profit';
+    if (pf.some(k => val.includes(k))) return 'Profit';
     return titleCase(val);
   }
   function extractPlaats(postadres=''){
@@ -71,13 +74,86 @@ export default async function mount(app){
       }
       if (!data || data.length < step) break;
     }
-    all.forEach(r => { r.__plaats = extractPlaats(r['Postadres']); });
+    all.forEach(r => { r.__plaats = extractPlaats(r['Postadres']); r.__profit = profitLabel(r); });
     return { rows: all, total: total ?? all.length };
   }
 
-  function setOptions(sel, arr, format=(v)=>v){
-    sel.innerHTML = arr.map(v=>`<option value="${v}">${format(v)}</option>`).join('');
+  // --- Checkbox dropdown component ---
+  function CheckboxDropdown(rootEl, { label, format=(v)=>v }){
+    const state = { options: [], filtered: [], selected: new Set() };
+    rootEl.classList.add('dd');
+    rootEl.innerHTML = `
+      <button class="dd-btn">${label} <span class="count"></span></button>
+      <div class="dd-menu">
+        <div class="dd-tools">
+          <button data-act="all">Alles</button>
+          <button data-act="none">Geen</button>
+        </div>
+        <div class="dd-search"><input type="text" placeholder="Zoek in ${label.toLowerCase()}…"></div>
+        <div class="dd-list"></div>
+      </div>
+    `;
+    const btn = rootEl.querySelector('.dd-btn');
+    const menu = rootEl.querySelector('.dd-menu');
+    const list = rootEl.querySelector('.dd-list');
+    const search = rootEl.querySelector('.dd-search input');
+    const count = rootEl.querySelector('.count');
+    let onChange = ()=>{};
+
+    function open(){ rootEl.classList.add('open'); }
+    function close(){ rootEl.classList.remove('open'); }
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const isOpen = rootEl.classList.contains('open');
+      document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open'));
+      if (!isOpen) open();
+    });
+    document.addEventListener('click', ()=> close());
+
+    rootEl.querySelector('.dd-tools').addEventListener('click', (e)=>{
+      const act = e.target.dataset.act;
+      if (act==='all'){ state.options.forEach(v => state.selected.add(v)); renderList(); changed(); }
+      if (act==='none'){ state.selected.clear(); renderList(); changed(); }
+    });
+
+    search.addEventListener('input', ()=>{
+      const q = search.value.trim().toLowerCase();
+      state.filtered = !q ? state.options : state.options.filter(v => format(v).toLowerCase().includes(q));
+      renderList();
+    });
+
+    function renderList(){
+      list.innerHTML = state.filtered.map(v => `
+        <label class="dd-item"><input type="checkbox" value="${v}" ${state.selected.has(v)?'checked':''}/> ${format(v)}</label>
+      `).join('');
+      list.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+        chk.addEventListener('change', () => {
+          if (chk.checked) state.selected.add(chk.value); else state.selected.delete(chk.value);
+          changed();
+        });
+      });
+      count.textContent = state.selected.size ? `(${state.selected.size})` : '';
+    }
+
+    function changed(){ onChange(getSelected()); }
+    function setOptions(arr){
+      state.options = [...arr];
+      state.filtered = [...arr];
+      renderList();
+    }
+    function getSelected(){ return [...state.selected]; }
+    function clear(){ state.selected.clear(); search.value=''; state.filtered = state.options; renderList(); }
+    function selectAll(){ state.options.forEach(v => state.selected.add(v)); renderList(); }
+    function setOnChange(fn){ onChange = fn; }
+
+    return { setOptions, getSelected, clear, selectAll, setOnChange };
   }
+
+  // Build dropdowns
+  const ddGemeente = CheckboxDropdown(document.getElementById('dd-gemeente'), { label:'Gemeente' });
+  const ddPlaats   = CheckboxDropdown(document.getElementById('dd-plaats'),   { label:'Plaats' });
+  const ddSport    = CheckboxDropdown(document.getElementById('dd-sport'),    { label:'Sport', format: titleCase });
+  const ddProfit   = CheckboxDropdown(document.getElementById('dd-profit'),   { label:'Profit/Non-profit' });
 
   function hydrateFilters(){
     const gSet = new Set(), sSet = new Set(), pSet = new Set();
@@ -86,30 +162,30 @@ export default async function mount(app){
       if (r['Subsoort organisatie']) sSet.add(r['Subsoort organisatie']);
       if (r.__plaats) pSet.add(r.__plaats);
     });
-    setOptions($('#gemeente'), [...gSet].sort());
-    setOptions($('#sport'), [...sSet].sort(), titleCase);
-    setOptions($('#plaats'), [...pSet].sort());
-  }
-
-  function vals(sel){
-    return Array.from(sel.selectedOptions).map(o=>o.value);
+    ddGemeente.setOptions([...gSet].sort());
+    ddSport.setOptions([...sSet].sort());
+    ddPlaats.setOptions([...pSet].sort());
+    ddProfit.setOptions(['Non-profit', 'Profit']);
   }
 
   function updateCounter(){
-    $('#counter').textContent = `Totaal ${state.total} clubs • Gefilterd ${state.filtered.length}`;
+    document.getElementById('counter').textContent = `Totaal ${state.total} clubs • Gefilterd ${state.filtered.length}`;
   }
 
   function applyFilters(){
-    const q = $('#q').value.trim().toLowerCase();
-    const gs = vals($('#gemeente'));
-    const ss = vals($('#sport'));
-    const ps = vals($('#plaats'));
+    const q = document.getElementById('q').value.trim().toLowerCase();
+    const gs = ddGemeente.getSelected();
+    const ss = ddSport.getSelected();
+    const ps = ddPlaats.getSelected();
+    const pr = ddProfit.getSelected(); // 'Profit' / 'Non-profit'
+
     state.filtered = state.rows.filter(r => {
       const okQ = !q || (r['Naam']||'').toLowerCase().includes(q);
       const okG = gs.length===0 || gs.includes(r['Vestigingsgemeente']);
       const okS = ss.length===0 || ss.includes(r['Subsoort organisatie']);
       const okP = ps.length===0 || ps.includes(r.__plaats);
-      return okQ && okG && okS && okP;
+      const okR = pr.length===0 || pr.includes(r.__profit);
+      return okQ && okG && okS && okP && okR;
     });
     state.page = 1;
     updateCounter();
@@ -120,24 +196,25 @@ export default async function mount(app){
     const start = (state.page-1) * state.perPage;
     const pageRows = state.filtered.slice(start, start+state.perPage);
 
-    $('#list').innerHTML = pageRows.map(r => `
+    document.getElementById('list').innerHTML = pageRows.map(r => `
       <article class="card" data-id="${r['Nr.']}">
         <h3>${r['Naam'] || 'Onbekend'}</h3>
         <div class="meta">🏅 ${titleCase(r['Subsoort organisatie'] || '-')}</div>
         <div class="meta">🏙️ ${r['Vestigingsgemeente'] || '-'}</div>
-        <div class="meta">💼 ${profitLabel(r)}</div>
+        <div class="meta">📍 ${r.__plaats || '-'}</div>
+        <div class="meta">💼 ${r.__profit || '-'}</div>
         <button class="btn-accent btn-more" data-id="${r['Nr.']}">Details</button>
       </article>
     `).join('');
 
     const totalPages = Math.max(1, Math.ceil(state.filtered.length / state.perPage));
-    $('#pager').innerHTML = `
+    document.getElementById('pager').innerHTML = `
       <button id="prev" ${state.page===1?'disabled':''}>Vorige</button>
       <span>Pagina ${state.page} van ${totalPages}</span>
       <button id="next" ${state.page===totalPages?'disabled':''}>Volgende</button>
     `;
-    $('#prev')?.addEventListener('click', ()=>{ state.page--; renderList(); });
-    $('#next')?.addEventListener('click', ()=>{ state.page++; renderList(); });
+    document.getElementById('prev')?.addEventListener('click', ()=>{ state.page--; renderList(); });
+    document.getElementById('next')?.addEventListener('click', ()=>{ state.page++; renderList(); });
 
     app.querySelectorAll('.btn-more').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -173,17 +250,16 @@ export default async function mount(app){
   document.addEventListener('keydown', (e)=>{ if (e.key==='Escape') closeDrawer(); });
 
   document.getElementById('q').addEventListener('input', applyFilters);
-  document.getElementById('gemeente').addEventListener('change', applyFilters);
-  document.getElementById('sport').addEventListener('change', applyFilters);
-  document.getElementById('plaats').addEventListener('change', applyFilters);
+  ddGemeente.setOnChange(applyFilters);
+  ddSport.setOnChange(applyFilters);
+  ddPlaats.setOnChange(applyFilters);
+  ddProfit.setOnChange(applyFilters);
+
   document.getElementById('reload').addEventListener('click', init);
   document.getElementById('export').addEventListener('click', exportCsv);
   document.getElementById('clear').addEventListener('click', () => {
     document.getElementById('q').value = '';
-    ['gemeente','sport','plaats'].forEach(id => {
-      const sel = document.getElementById(id);
-      Array.from(sel.options).forEach(o => o.selected = false);
-    });
+    ddGemeente.clear(); ddSport.clear(); ddPlaats.clear(); ddProfit.clear();
     applyFilters();
   });
 
