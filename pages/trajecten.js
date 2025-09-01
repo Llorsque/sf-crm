@@ -4,20 +4,13 @@ export default async function mount(app){
   app.innerHTML = `
     <div class="card" style="margin-bottom:14px">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
-        <div><h2 style="margin:0">Trajecten</h2><div class="muted">Stap 1: Club kiezen → Stap 2: Details → Opslaan</div></div>
+        <div><h2 style="margin:0">Trajecten</h2><div class="muted">Voeg trajecten toe, gekoppeld aan clubs uit het CRM</div></div>
         <div style="display:flex; gap:8px">
           <button id="btn-new" class="btn-accent">➕ Nieuw traject</button>
           <button id="btn-refresh" class="btn-accent">🔄 Ververs</button>
+          <button id="btn-export" class="btn-accent">⬇️ Export</button>
         </div>
       </div>
-    </div>
-
-    <div id="wizard" class="card" style="display:none; padding:16px">
-      <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px">
-        <span class="pill">1 • Club</span><span>→</span><span class="pill muted">2 • Details</span>
-      </div>
-      <div id="step-1"></div>
-      <div id="step-2" style="display:none"></div>
     </div>
 
     <div class="card">
@@ -26,178 +19,263 @@ export default async function mount(app){
         <select id="f-status" class="filter-input" style="max-width:220px">
           <option value="">Alle status</option>
           <option>Nieuw</option>
-          <option>Lopend</option>
+          <option selected>Lopend</option>
           <option>Afgerond</option>
           <option>Gepauzeerd</option>
+        </select>
+        <select id="f-stage" class="filter-input" style="max-width:220px">
+          <option value="">Alle stages</option>
+          <option>Intake</option>
+          <option>Uitvoering</option>
+          <option>Evaluatie</option>
         </select>
       </div>
       <div id="list" class="grid"></div>
     </div>
+
+    <!-- Modal -->
+    <div id="modal-overlay" class="overlay"></div>
+    <div id="modal" class="modal">
+      <div class="modal-head">
+        <h3>Nieuw traject</h3>
+        <button id="modal-close" class="icon-btn">✖</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>Vereniging (uit database)</label>
+            <div class="club-picker">
+              <input id="club-q" class="filter-input" placeholder="Zoek/Selecteer club…" autocomplete="off"/>
+              <div id="club-dd" class="club-dd"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Type traject</label>
+            <select id="f-type" class="filter-input">
+              <option value="">Kies…</option>
+              <option>Begeleiding</option>
+              <option>Cursus</option>
+              <option>Advies</option>
+              <option>Traject</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Clubondersteuner</label>
+            <select id="f-eigenaar" class="filter-input">
+              <option value="">Kies…</option>
+              <option>Coach A</option>
+              <option>Coach B</option>
+              <option>Coach C</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Trajectbegeleider</label>
+            <input id="f-begeleider" class="filter-input" placeholder="Naam"/>
+          </div>
+          <div class="field">
+            <label>Start traject</label>
+            <input type="date" id="f-start" class="filter-input"/>
+          </div>
+          <div class="field">
+            <label>Verwacht einde</label>
+            <input type="date" id="f-eind" class="filter-input"/>
+          </div>
+          <div class="field">
+            <label>Begroot (€)</label>
+            <input id="f-begroot" class="filter-input" inputmode="decimal" value="0.00"/>
+          </div>
+          <div class="field">
+            <label>Type financiering</label>
+            <select id="f-fin-type" class="filter-input">
+              <option value="">Kies…</option>
+              <option>Provincie</option>
+              <option>Gemeente</option>
+              <option>Fonds</option>
+              <option>Anders</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Financiering %</label>
+            <input id="f-fin-pct" class="filter-input" inputmode="numeric" value="0"/>
+          </div>
+          <div class="field">
+            <label>Financiering €</label>
+            <input id="f-fin-eur" class="filter-input" inputmode="decimal" value="0,00"/>
+          </div>
+          <div class="field">
+            <label>Eigen bijdrage %</label>
+            <input id="f-eigen-pct" class="filter-input" inputmode="numeric" value="0"/>
+          </div>
+          <div class="field">
+            <label>Eigen bijdrage €</label>
+            <input id="f-eigen-eur" class="filter-input" inputmode="decimal" value="0,00"/>
+          </div>
+          <div class="field span-2">
+            <div id="dekking" class="muted">Dekking: 0.0% (0.00 EUR) • Restant: 100.0% (0.00 EUR)</div>
+          </div>
+          <div class="field">
+            <label>Stage</label>
+            <select id="f-stage-new" class="filter-input">
+              <option>Intake</option>
+              <option>Uitvoering</option>
+              <option>Evaluatie</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Laatste update</label>
+            <input type="date" id="f-last" class="filter-input"/>
+          </div>
+          <div class="field span-2">
+            <label>Notities</label>
+            <textarea id="f-note" class="filter-input" rows="5" placeholder=""></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button id="modal-cancel" class="btn-secondary">Annuleren</button>
+        <button id="modal-save" class="btn-accent">Opslaan</button>
+      </div>
+    </div>
   `;
 
+  injectStyles();
+
   const $ = (s)=> app.querySelector(s);
-  const state = { rows: [], filtered: [] , club:null };
+  const state = { list: [], club:null };
 
-  // NEW
-  $('#btn-new').addEventListener('click', () => { showWizard(); renderStep1(); });
+  // List filters + boot
+  $('#btn-new').addEventListener('click', openModal);
   $('#btn-refresh').addEventListener('click', init);
+  $('#btn-export').addEventListener('click', exportCsv);
+  $('#q').addEventListener('input', debounce(renderList, 200));
+  $('#f-status').addEventListener('change', renderList);
+  $('#f-stage').addEventListener('change', renderList);
 
-  function showWizard(){ $('#wizard').style.display='block'; }
-  function goStep(n){
-    $('#step-1').style.display = n===1? 'block':'none';
-    $('#step-2').style.display = n===2? 'block':'none';
-  }
-
-  // Step 1 — club kiezen (uit Supabase 'clubs')
-  async function renderStep1(){
-    $('#step-1').innerHTML = `
-      <label style="font-weight:700">Kies club uit CRM (Supabase)</label>
-      <input id="club-q" class="filter-input" placeholder="🔍 Zoeken op naam of Nr.…">
-      <div id="club-results" class="grid" style="margin-top:10px"></div>
-      <div style="display:flex; gap:8px; margin-top:12px; justify-content:flex-end">
-        <button id="s1-next" class="btn-accent" disabled>Volgende →</button>
-      </div>
-    `;
-    $('#club-q').addEventListener('input', debounce(searchClubs, 250));
-    $('#s1-next').addEventListener('click', () => renderStep2());
-
-    async function searchClubs(){
-      const q = $('#club-q').value.trim();
-      const { data, error } = await supabase
-        .from('clubs')
-        .select('"Nr.", "Naam", "Vestigingsgemeente", "Postadres"')
-        .or(`Naam.ilike.%${q}%, "Nr.".eq.${q}`)
-        .limit(24);
-      if (error){ console.error(error); return; }
-      $('#club-results').innerHTML = (data||[]).map(r => `
-        <article class="card">
-          <h3>${r['Naam']}</h3>
-          <div class="meta">Nr: ${r['Nr.']}</div>
-          <div class="meta">${r['Vestigingsgemeente'] || ''} • ${(r['Postadres']||'')}</div>
-          <button class="btn-accent choose" data-nr="${r['Nr.']}">Kies</button>
-        </article>
-      `).join('');
-
-      app.querySelectorAll('.choose').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const nr = btn.dataset.nr;
-          const club = (data||[]).find(x => String(x['Nr.'])===String(nr));
-          state.club = club;
-          $('#s1-next').disabled = !club;
-        });
-      });
-    }
-    $('#club-q').value=''; state.club=null; $('#s1-next').disabled=true; searchClubs();
-  }
-
-  // Step 2 — details + opslaan naar 'trajecten'
-  function renderStep2(){
-    if (!state.club){ alert('Kies eerst een club.'); return; }
-    goStep(2);
-    $('#step-2').innerHTML = `
-      <div class="grid">
-        <div class="card">
-          <label>Club</label>
-          <div><strong>${state.club['Naam']}</strong> <span class="muted">(#${state.club['Nr.']})</span></div>
-          <div class="muted">${state.club['Vestigingsgemeente']||''} • ${(state.club['Postadres']||'')}</div>
-        </div>
-        <div class="card">
-          <label>Titel</label>
-          <input id="f-titel" class="filter-input" placeholder="Bijv. Verduurzaming sportpark"/>
-          <label style="margin-top:8px">Type</label>
-          <select id="f-type" class="filter-input">
-            <option>Begeleiding</option>
-            <option>Cursus</option>
-            <option>Advies</option>
-            <option>Traject</option>
-          </select>
-          <label style="margin-top:8px">Status</label>
-          <select id="f-status" class="filter-input">
-            <option>Nieuw</option>
-            <option selected>Lopend</option>
-            <option>Afgerond</option>
-            <option>Gepauzeerd</option>
-          </select>
-        </div>
-        <div class="card">
-          <label>Startdatum</label>
-          <input type="date" id="f-start" class="filter-input"/>
-          <label style="margin-top:8px">Einddatum</label>
-          <input type="date" id="f-eind" class="filter-input"/>
-          <label style="margin-top:8px">Eigenaar/coach</label>
-          <input id="f-owner" class="filter-input" placeholder="Naam traject-eigenaar"/>
-        </div>
-        <div class="card">
-          <label>Notities</label>
-          <textarea id="f-note" class="filter-input" rows="6" placeholder="Korte omschrijving…"></textarea>
-          <label style="margin-top:8px">Tags (komma-gescheiden)</label>
-          <input id="f-tags" class="filter-input" placeholder="bijv. energie, jeugd, kunstgras"/>
-        </div>
-      </div>
-      <div style="display:flex; gap:8px; margin-top:12px; justify-content:space-between">
-        <button id="back" class="btn-accent">← Terug</button>
-        <button id="save" class="btn-accent">💾 Opslaan</button>
-      </div>
-    `;
-    $('#back').addEventListener('click', () => { goStep(1); renderStep1(); });
-    $('#save').addEventListener('click', saveTraject);
-  }
-
-  async function saveTraject(){
-    const club = state.club;
-    const payload = {
-      club_nr: String(club['Nr.']),
-      club_naam: club['Naam'],
-      titel: $('#f-titel').value.trim() || `Traject ${club['Naam']}`,
-      type: $('#f-type').value,
-      status: $('#f-status').value,
-      start_datum: $('#f-start').value || null,
-      eind_datum: $('#f-eind').value || null,
-      eigenaar: $('#f-owner').value.trim() || null,
-      notities: $('#f-note').value.trim() || null,
-      tags: $('#f-tags').value.split(',').map(s=>s.trim()).filter(Boolean),
-      gemeente: club['Vestigingsgemeente'] || null,
-      plaats: extractPlaats(club['Postadres']||'') || null
-    };
-    if (!payload.tags.length) payload.tags = null;
-
-    const { error } = await supabase.from('trajecten').insert(payload);
-    if (error){ console.error(error); alert('Opslaan mislukt (tabel/policies?).'); return; }
-    alert('Traject opgeslagen!');
-    $('#wizard').style.display='none';
-    init();
-  }
-
-  // Overview (eenvoudig)
-  $('#q').addEventListener('input', debounce(applyFilters, 200));
-  $('#f-status').addEventListener('change', applyFilters);
+  await init();
 
   async function init(){
-    const { data, error } = await supabase.from('trajecten').select('*').order('created_at', { ascending:false }).limit(500);
-    if (error){ console.warn('Nog geen tabel/policy? Draai supabase-trajecten.sql', error); return; }
-    state.rows = data||[]; applyFilters();
-  }
-
-  function applyFilters(){
-    const q = ($('#q')?.value||'').toLowerCase();
-    const st = $('#f-status')?.value||'';
-    state.filtered = state.rows.filter(r => {
-      const okQ = !q || (r.club_naam||'').toLowerCase().includes(q) || (r.titel||'').toLowerCase().includes(q);
-      const okS = !st || r.status===st;
-      return okQ && okS;
-    });
+    const { data, error } = await supabase.from('trajecten').select('*').order('created_at', { ascending:false }).limit(1000);
+    if (error) { console.error(error); state.list = []; }
+    else state.list = data || [];
     renderList();
   }
 
   function renderList(){
-    $('#list').innerHTML = state.filtered.map(r => `
+    const q = ($('#q')?.value||'').toLowerCase();
+    const st = $('#f-status')?.value||'';
+    const sg = $('#f-stage')?.value||'';
+    const rows = state.list.filter(r => {
+      const okQ = !q || (r.club_naam||'').toLowerCase().includes(q) || (r.titel||'').toLowerCase().includes(q);
+      const okS = !st || r.status===st;
+      const okG = !sg || r.stage===sg;
+      return okQ && okS && okG;
+    });
+    $('#list').innerHTML = rows.map(r => `
       <article class="card">
-        <h3>${r.titel || 'Traject'}</h3>
+        <h3>${r.titel || (r.type || 'Traject')}</h3>
         <div class="meta">🏟️ ${r.club_naam} <span class="muted">(#${r.club_nr})</span></div>
         <div class="meta">📅 ${r.start_datum || '—'} → ${r.eind_datum || '—'}</div>
-        <div class="meta">🏷️ ${r.type || '—'} • <strong>${r.status}</strong></div>
+        <div class="meta">🏷️ ${r.type || '—'} • <strong>${r.status}</strong> • ${r.stage || '-'}</div>
       </article>
     `).join('');
+  }
+
+  // Modal
+  function openModal(){
+    state.club = null;
+    $('#modal-overlay').classList.add('show');
+    $('#modal').classList.add('open');
+    $('#modal-close').onclick = closeModal;
+    $('#modal-cancel').onclick = closeModal;
+    $('#modal-save').onclick = save;
+    // defaults
+    const today = new Date().toISOString().slice(0,10);
+    $('#f-last').value = today;
+    // club search events
+    $('#club-q').addEventListener('input', debounce(searchClubs, 250));
+    $('#club-dd').innerHTML = '';
+    // calculate coverage
+    ['f-begroot','f-fin-pct','f-fin-eur','f-eigen-pct','f-eigen-eur'].forEach(id=>{
+      $('#'+id).addEventListener('input', calcCoverage);
+    });
+    calcCoverage();
+  }
+
+  function closeModal(){
+    $('#modal-overlay').classList.remove('show');
+    $('#modal').classList.remove('open');
+  }
+
+  async function searchClubs(){
+    const q = $('#club-q').value.trim();
+    const { data, error } = await supabase
+      .from('clubs')
+      .select('"Nr.", "Naam", "Vestigingsgemeente", "Postadres"')
+      .or(`Naam.ilike.%${q}%, "Nr.".eq.${q}`)
+      .limit(15);
+    if (error){ console.error(error); return; }
+    $('#club-dd').innerHTML = (data||[]).map(r => `
+      <button class="dd-item" data-nr="${r['Nr.']}">
+        <div class="dd-title">${r['Naam']}</div>
+        <div class="dd-sub">${r['Vestigingsgemeente']||''} • ${(r['Postadres']||'')}</div>
+      </button>
+    `).join('');
+    Array.from($('#club-dd').querySelectorAll('.dd-item')).forEach(btn => {
+      btn.addEventListener('click', ()=>{
+        const nr = btn.dataset.nr;
+        const club = (data||[]).find(x => String(x['Nr.'])===String(nr));
+        state.club = club;
+        $('#club-q').value = `${club['Naam']} (#${club['Nr.']})`;
+        $('#club-dd').innerHTML = '';
+      });
+    });
+  }
+
+  function parseMoney(val){ if (!val) return 0; return parseFloat(String(val).replace(/[€\s\.]/g,'').replace(',', '.')) || 0; }
+  function parsePct(val){ return parseFloat(String(val).replace(',', '.')) || 0; }
+  function calcCoverage(){
+    const begroot = parseMoney($('#f-begroot').value);
+    const finPct  = parsePct($('#f-fin-pct').value);
+    let finEur    = parseMoney($('#f-fin-eur').value);
+    const eigPct  = parsePct($('#f-eigen-pct').value);
+    let eigEur    = parseMoney($('#f-eigen-eur').value);
+    if (finPct>0 && begroot>0) finEur = (begroot * finPct/100);
+    if (eigPct>0 && begroot>0) eigEur = (begroot * eigPct/100);
+    const dekking = (finEur + eigEur);
+    const dekPct = begroot>0 ? 100*dekking/begroot : 0;
+    const rest = Math.max(0, begroot - dekking);
+    const restPct = begroot>0 ? 100*rest/begroot : 100;
+    $('#dekking').textContent = `Dekking: ${dekPct.toFixed(1)}% (${(dekking||0).toLocaleString('nl-NL',{style:'currency',currency:'EUR'})}) • Restant: ${restPct.toFixed(1)}% (${(rest||0).toLocaleString('nl-NL',{style:'currency',currency:'EUR'})})`;
+  }
+
+  async function save(){
+    if (!state.club){ alert('Kies eerst een club.'); return; }
+    const payload = {
+      club_nr: String(state.club['Nr.']),
+      club_naam: state.club['Naam'],
+      titel: $('#f-type').value || 'Traject',
+      type: $('#f-type').value || null,
+      status: 'Lopend',
+      start_datum: $('#f-start').value || null,
+      eind_datum: $('#f-eind').value || null,
+      eigenaar: $('#f-eigenaar').value || $('#f-begeleider').value || null,
+      notities: $('#f-note').value || null,
+      tags: null,
+      gemeente: state.club['Vestigingsgemeente'] || null,
+      plaats: extractPlaats(state.club['Postadres']||'') || null,
+      begroot_eur: parseMoney($('#f-begroot').value) || null,
+      financiering_type: $('#f-fin-type').value || null,
+      financiering_pct: parsePct($('#f-fin-pct').value) || null,
+      financiering_eur: parseMoney($('#f-fin-eur').value) || null,
+      eigen_pct: parsePct($('#f-eigen-pct').value) || null,
+      eigen_eur: parseMoney($('#f-eigen-eur').value) || null,
+      stage: $('#f-stage-new').value || null,
+      laatste_update: $('#f-last').value || null
+    };
+    const { error } = await supabase.from('trajecten').insert(payload);
+    if (error){ console.error(error); alert('Opslaan mislukt. Controleer of de tabel en policies bestaan.'); return; }
+    closeModal();
+    await init();
   }
 
   function extractPlaats(postadres=''){
@@ -208,8 +286,41 @@ export default async function mount(app){
     return parts.length ? parts[parts.length-1] : '';
   }
 
+  function exportCsv(){
+    const rows = state.list;
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]);
+    const esc = (v)=> '"' + String(v ?? '').replace(/"/g,'""') + '"';
+    const csv = [headers.join(',')].concat(rows.map(r => headers.map(h => esc(r[h])).join(','))).join('\n');
+    const blob = new Blob([csv], { type:'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'trajecten.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function debounce(fn, ms){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), ms); }; }
 
-  // Boot
-  init();
+  function injectStyles(){
+    const css = `
+      .modal{position:fixed; inset:auto 20px 20px 20px; top:20px; max-width:980px; margin:0 auto; background:#fff; border-radius:16px; box-shadow:0 10px 40px rgba(20,28,58,.22); display:none; flex-direction:column; max-height:calc(100vh - 40px);}
+      .modal.open{display:flex;}
+      .modal-head, .modal-foot{padding:12px 16px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #eef0f6;}
+      .modal-foot{border-top:1px solid #eef0f6; border-bottom:none;}
+      .modal-body{padding:16px; overflow:auto;}
+      .overlay{position:fixed; inset:0; background:rgba(23,31,55,.4); opacity:0; pointer-events:none; transition:.2s;}
+      .overlay.show{opacity:1; pointer-events:all;}
+      .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+      .field{display:flex; flex-direction:column;}
+      .field.span-2{grid-column:1 / -1;}
+      .club-picker{position:relative;}
+      .club-dd{position:absolute; z-index:20; left:0; right:0; top:100%; background:#fff; border:1px solid #e7eaf3; border-radius:12px; box-shadow:0 8px 30px rgba(20,28,58,.12); overflow:hidden; max-height:240px; overflow:auto;}
+      .dd-item{display:block; width:100%; text-align:left; padding:10px 12px; border-bottom:1px solid #f2f4f9;}
+      .dd-item:hover{background:#f6fbfb;}
+      .dd-title{font-weight:700;}
+      .dd-sub{font-size:.9rem; color:#6b7280;}
+      .icon-btn{background:#f2f4f9; border:none; padding:8px 10px; border-radius:10px; cursor:pointer;}
+      .btn-secondary{background:#eef2f8; border:none; padding:10px 14px; border-radius:12px; font-weight:700; cursor:pointer;}
+    `;
+    const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
+  }
 }
