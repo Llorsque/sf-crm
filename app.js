@@ -14,20 +14,29 @@ document.getElementById('btn-refresh').addEventListener('click', () => {
   loadPage(active);
 });
 
-async function loadPage(page) {
-  app.innerHTML = `<p class="muted">Module <strong>${page}</strong> wordt geladen…</p>`;
+async function loadPage(page){
+  // show loading
+  app.innerHTML = `<div class="panel"><p><strong>${page}</strong> wordt geladen…</p></div>`;
   try {
-    const modUrl = `./pages/${page}.js?v=16`;
+    const cacheBust = '16';
+    const modUrl = `./pages/${page}.js?v=${cacheBust}`;
     const module = await import(modUrl);
-    await module.default(app);
+    if (typeof module.default === 'function'){
+      await module.default(app);
+    } else {
+      throw new Error(`Module ${page} heeft geen default export`);
+    }
   } catch (err) {
     console.error('Module load error:', err);
-    app.innerHTML = `<div class="alert">Module <strong>${page}</strong> niet gevonden of met fout geladen.<br><small>Probeerde: <code>${page}.js?v=16</code></small></div>`;
+    const tried = `${page}.js?v=16`;
+    app.innerHTML = `<div class="alert err">Module <strong>${page}</strong> niet gevonden of met fout geladen.<br><small>Probeerde: ${tried}</small></div>`;
   }
 }
 
+// Supabase status indicator (optional)
 import { supabase } from './supabaseClient.js';
-async function checkSupabase() {
+
+async function checkSupabase(){
   try {
     const { error } = await supabase
       .from('clubs')
