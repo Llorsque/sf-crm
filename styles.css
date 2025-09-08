@@ -97,9 +97,7 @@ h1{ font-size:1.4rem; margin:0 }
 
 .counter{ margin:8px 0 16px 0; color:var(--muted); font-size:0.95rem }
 
-
 /* --- Modal stacking context fix --- */
 #modal { z-index: 1001; }
 .modal { z-index: 1001; }
 #modal-overlay { z-index: 1000; }
-

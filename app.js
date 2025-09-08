@@ -17,11 +17,12 @@ document.getElementById('btn-refresh').addEventListener('click', () => {
 async function loadPage(page) {
   app.innerHTML = `<p class="muted">Module <strong>${page}</strong> wordt geladen…</p>`;
   try {
-    const module = await import(`./pages/${page}.js?v=7`);
+    const modUrl = `./pages/${page}.js?v=9`;
+    const module = await import(modUrl);
     await module.default(app);
   } catch (err) {
     console.error('Module load error:', err);
-    app.innerHTML = `<div class="alert">Module <strong>${page}</strong> niet gevonden.</div>`;
+    app.innerHTML = `<div class="alert">Module <strong>${page}</strong> niet gevonden of met fout geladen.<br><small>Probeerde: <code>${page}.js?v=9</code></small></div>`;
   }
 }
 
