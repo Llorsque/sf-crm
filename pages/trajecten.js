@@ -185,7 +185,8 @@ export default async function mount(app){
     state.club = null;
     $('#modal-overlay').classList.add('show');
     $('#modal').classList.add('open');
-    $('#modal-close').onclick = closeModal;
+    \1
+    $('#modal-overlay').onclick = closeModal;
     $('#modal-cancel').onclick = closeModal;
     $('#modal-save').onclick = save;
     // defaults
@@ -206,7 +207,13 @@ export default async function mount(app){
     $('#modal').classList.remove('open');
   }
 
-  async function searchClubs(){
+  
+
+  // Close on ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
+async function searchClubs(){
     const q = $('#club-q').value.trim();
     const { data, error } = await supabase
       .from('clubs')
