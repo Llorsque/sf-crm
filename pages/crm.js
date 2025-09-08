@@ -1,6 +1,7 @@
 import { supabase } from '../supabaseClient.js';
 
 export default async function mount(app){
+  window.openTrajectFromCRM = (id)=>{ try{ sessionStorage.setItem('openTrajectId', id); if (typeof loadPage==='function'){ loadPage('trajecten'); } else { window.location.hash='#trajecten'; } }catch(e){ console.error(e);} };
   app.innerHTML = `
     <div class="filter-bar">
       <input id="q" class="filter-input" placeholder="🔍 Zoek op naam…">
