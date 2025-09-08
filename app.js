@@ -14,42 +14,44 @@ document.getElementById('btn-refresh').addEventListener('click', () => {
   loadPage(active);
 });
 
-async function loadPage(page){
-  // show loading
+function loadPage(page){
   app.innerHTML = `<div class="panel"><p><strong>${page}</strong> wordt geladen…</p></div>`;
-  try {
-    const cacheBust = '16';
-    const modUrl = `./pages/${page}.js?v=${cacheBust}`;
-    const module = await import(modUrl);
-    if (typeof module.default === 'function'){
-      await module.default(app);
-    } else {
-      throw new Error(`Module ${page} heeft geen default export`);
-    }
-  } catch (err) {
-    console.error('Module load error:', err);
-    const tried = `${page}.js?v=16`;
-    app.innerHTML = `<div class="alert err">Module <strong>${page}</strong> niet gevonden of met fout geladen.<br><small>Probeerde: ${tried}</small></div>`;
-  }
+  const cacheBust = '16';
+  const modUrl = `./pages/${page}.js?v=${cacheBust}`;
+  import(modUrl)
+    .then((module) => {
+      if (typeof module.default === 'function'){
+        const res = module.default(app);
+        return (res && typeof res.then === 'function') ? res : Promise.resolve();
+      } else {
+        throw new Error(`Module ${page} heeft geen default export`);
+      }
+    })
+    .catch((err) => {
+      console.error('Module load error:', err);
+      const tried = `${page}.js?v=${cacheBust}`;
+      app.innerHTML = `<div class="alert err">Module <strong>${page}</strong> niet gevonden of met fout geladen.<br><small>Probeerde: ${tried}</small></div>`;
+    });
 }
 
-// Supabase status indicator (optional)
+// Supabase status indicator
 import { supabase } from './supabaseClient.js';
 
-async function checkSupabase(){
-  try {
-    const { error } = await supabase
-      .from('clubs')
-      .select('"Nr."', { count: 'exact', head: true })
-      .limit(1);
-    if (error) throw error;
-    statusEl.textContent = 'verbonden';
-    statusEl.className = 'ok';
-  } catch (e) {
-    statusEl.textContent = 'fout';
-    statusEl.className = 'err';
-    console.error('Supabase check failed:', e);
-  }
+function checkSupabase(){
+  return supabase
+    .from('clubs')
+    .select('"Nr."', { count: 'exact', head: true })
+    .limit(1)
+    .then(({ error }) => {
+      if (error) throw error;
+      statusEl.textContent = 'verbonden';
+      statusEl.className = 'ok';
+    })
+    .catch((e) => {
+      statusEl.textContent = 'fout';
+      statusEl.className = 'err';
+      console.error('Supabase check failed:', e);
+    });
 }
 
 checkSupabase();
