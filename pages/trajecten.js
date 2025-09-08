@@ -159,25 +159,12 @@ export default async function mount(app){
   $('#f-status').addEventListener('change', renderList);
   $('#f-stage').addEventListener('change', renderList);
 
-  
-  // Klik op kaart of bewerk-knop om te openen
-  $('#list').addEventListener('click', (e)=>{
-    const btn = e.target.closest('.btn-edit');
-    const card = e.target.closest('.t-card');
-    const id = btn?.dataset.id || card?.dataset.id;
-    if (id) { openEditById(id); }
-  });
-  async function init(){
-    // Check deep-link from CRM
-    const toOpen = sessionStorage.getItem('openTrajectId');
-    if (toOpen) { sessionStorage.removeItem('openTrajectId'); }
+  document.getElementById('f-status').value=''; await init();
 
+  async function init(){
     const { data, error } = await supabase.from('trajecten').select('*').order('created_at', { ascending:false }).limit(1000);
     if (error) { console.error(error); state.list = []; }
     else state.list = data || [];
-    renderList();
-    if (toOpen){ const rec = state.list.find(r=>String(r.id)===String(toOpen)); if (rec) openEdit(rec); }
-
     renderList();
   }
 
@@ -196,21 +183,68 @@ export default async function mount(app){
         <h3>${r.titel || (r.type || 'Traject')}</h3>
         <div class="meta">🏟️ ${r.club_naam} <span class="muted">(#${r.club_nr})</span></div>
         <div class="meta">📅 ${r.start_datum || '—'} → ${r.eind_datum || '—'}</div>
-        <div class="meta">🏷️ ${r.type || '—'} • <strong>${r.status}</strong></div>
-        <div style="margin-top:8px"><button class="btn-secondary btn-edit" data-id="${r.id}">Bewerken</button></div>
+        <div class="meta">🏷️ ${r.type || '—'} • <strong>${r.status}</strong> </div>
       </article>
     `).join('');
   }
 
-  // Modal
-  
-function openModal(){
-  // When opening via 'Nieuw traject', reset edit mode and clear fields
-  state.editId = state.editId || null; // keep if coming from openEdit
+// === Edit: open existing traject in modal ===
+function openEditById(id){
+  const rec = state.list.find(r => String(r.id)===String(id));
+  if (!rec) return;
+  openEdit(rec);
+}
+function openEdit(r){
+  state.editId = r.id;
+  // Prefill club
+  state.club = { 'Nr.': r.club_nr, 'Naam': r.club_naam, 'Vestigingsgemeente': r.gemeente||'', 'Postadres': r.plaats||'' };
+  $('#club-q').value = `${r.club_naam||''} (#${r.club_nr||''})`;
+
+  // Prefill
+  const set = (id, val)=>{ const el=$(`#${id}`); if(el) el.value = val??''; };
+  set('f-type', r.type||'');
+  const stEl = $('#f-status') || $('#f-stage-new'); if (stEl) stEl.value = r.status || stEl.value;
+  set('f-eigenaar', r.eigenaar||'');
+  set('f-start', fmtDateNL(r.start_datum));
+  set('f-eind', fmtDateNL(r.eind_datum));
+  set('f-last', fmtDateNL(r.laatste_update));
+  set('f-note', r.notities||'');
+
+  const fmtEur = (v)=> Number(v||0).toLocaleString('nl-NL',{minimumFractionDigits:2, maximumFractionDigits:2});
+  const fmtPct = (v)=> v==null? '' : String(v).replace('.',',');
+  set('f-begroot', fmtEur(r.begroot_eur));
+  set('f-fin-type', r.financiering_type||'');
+  set('f-fin-pct', fmtPct(r.financiering_pct));
+  set('f-fin-eur', fmtEur(r.financiering_eur));
+  set('f-eigen-pct', fmtPct(r.eigen_pct));
+  set('f-eigen-eur', fmtEur(r.eigen_eur));
+
+  calcCoverage();
+
+  // Titel aanpassen en modal open
+  const h=document.querySelector('#modal h3'); if(h) h.textContent='Traject bewerken';
   document.getElementById('modal').style.display='block';
   document.getElementById('modal-overlay').style.display='block';
 }
 
+// Eén keer event delegation toevoegen na mount
+if (!window.__traj_list_click_bound){
+  window.__traj_list_click_bound = true;
+  document.addEventListener('click', (e)=>{
+    const editBtn = e.target.closest('.btn-edit');
+    const card = e.target.closest('.t-card');
+    const id = editBtn?.dataset?.id || card?.dataset?.id;
+    if (id && document.getElementById('list')){
+      e.preventDefault();
+      openEditById(id);
+    }
+  });
+}
+
+
+
+  // Modal
+  function openModal(){
     state.club = null;
     $('#modal-overlay').classList.add('show');
     $('#modal').classList.add('open');
@@ -230,15 +264,7 @@ function openModal(){
     calcCoverage();
   }
 
-  
-function closeModal(){
-  document.getElementById('modal').style.display='none';
-  document.getElementById('modal-overlay').style.display='none';
-  state.editId = null;
-  // Reset title
-  const h3 = document.querySelector('#modal h3'); if (h3) h3.textContent = 'Nieuw traject';
-}
-
+  function closeModal(){
     $('#modal-overlay').classList.remove('show');
     $('#modal').classList.remove('open');
   }
@@ -268,51 +294,8 @@ function closeModal(){
     });
   }
 
-  
-  function openEditById(id){
-    const rec = state.list.find(r=>String(r.id)===String(id));
-    if (!rec){ console.warn('Traject niet gevonden', id); return; }
-    openEdit(rec);
-  }
-
-  function openEdit(r){
-    state.editId = r.id;
-    // Prefill club in picker + club state
-    state.club = { 'Nr.': r.club_nr, 'Naam': r.club_naam, 'Vestigingsgemeente': r.gemeente||'', 'Postadres': r.plaats||'' };
-    $('#club-q').value = `${r.club_naam||''} (#${r.club_nr||''})`;
-
-    // Prefill fields
-    $('#f-type').value = r.type || $('#f-type').value;
-    const stEl = document.getElementById('f-status') || document.getElementById('f-stage-new');
-    if (stEl) stEl.value = r.status || stEl.value;
-    $('#f-eigenaar').value = r.eigenaar || $('#f-eigenaar').value;
-    $('#f-begeleider') && ($('#f-begeleider').value = r.eigenaar || '');
-    $('#f-start').value = fmtDateNL(r.start_datum);
-    $('#f-eind').value = fmtDateNL(r.eind_datum);
-    $('#f-last').value = fmtDateNL(r.laatste_update) || ($('#f-last').value||'');
-    $('#f-note').value = r.notities || '';
-
-    // Financiën
-    const fmtEur = (v)=> (Number(v||0).toLocaleString('nl-NL',{minimumFractionDigits:2, maximumFractionDigits:2}));
-    const fmtPct = (v)=> (v==null? '' : String(v).replace('.',','));
-    $('#f-begroot').value = fmtEur(r.begroot_eur);
-    $('#f-fin-type').value = r.financiering_type || $('#f-fin-type').value;
-    $('#f-fin-pct').value = fmtPct(r.financiering_pct);
-    $('#f-fin-eur').value = fmtEur(r.financiering_eur);
-    $('#f-eigen-pct').value = fmtPct(r.eigen_pct);
-    $('#f-eigen-eur').value = fmtEur(r.eigen_eur);
-
-    // Recalc coverage
-    calcCoverage();
-
-    // Open modal in edit mode
-    document.querySelector('#modal h3').textContent = 'Traject bewerken';
-    openModal();
-  }
-function parseMoney(val){ if (!val) return 0; return parseFloat(String(val).replace(/[€\s\.]/g,'').replace(',', '.')) || 0; }
+  function parseMoney(val){ if (!val) return 0; return parseFloat(String(val).replace(/[€\s\.]/g,'').replace(',', '.')) || 0; }
   function parsePct(val){ return parseFloat(String(val).replace(',', '.')) || 0; }
-
-function fmtDateNL(iso){ if(!iso) return ''; const s=iso.toString().slice(0,10).split('-'); if(s.length===3) return `${s[2]}-${s[1]}-${s[0]}`; return iso; }
 
 function parseDateNL(val){
   if (!val) return null;
@@ -386,9 +369,9 @@ function parseDateNL(val){
       eigen_pct: parsePct($('#f-eigen-pct').value) || null,
       eigen_eur: parseMoney($('#f-eigen-eur').value) || null,      laatste_update: parseDateNL($('#f-last').value) || null
     };
-    let error=null; if (state.editId){ const res = await supabase.from('trajecten').update(payload).eq('id', state.editId); error = res.error; } else { const res = await supabase.from('trajecten').insert(payload); error = res.error; }
+    let error=null; if(state.editId){ const res = await supabase.from('trajecten').update(payload).eq('id', state.editId); error = res.error; } else { const res = await supabase.from('trajecten').insert(payload); error = res.error; }
     if (error){ console.error('Supabase insert error:', error); alert('Opslaan mislukt: ' + (error.message||error)); return; }
-    closeModal();
+    closeModal(); state.editId=null; const h=document.querySelector('#modal h3'); if(h) h.textContent='Nieuw traject';
     document.getElementById('f-status').value=''; await init();
   }
 

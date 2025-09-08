@@ -251,8 +251,7 @@ export default async function mount(app){
           + `<span class="chip">${r.type||'-'}</span>`
           + `<span class="chip">${r.status||'-'}</span>`
           + `<span class="chip">${(r.laatste_update||'').toString().slice(0,10)}</span>`
-          + `<span class=\"chip\">€ ${Number(r.begroot_eur||0).toLocaleString('nl-NL',{minimumFractionDigits:2})}</span>`
-          + ` <a href=\"#\" class=\"chip\" onclick=\"openTrajectFromCRM('${'${r.id}'}')\">openen</a>`
+          + `<span class="chip">€ ${Number(r.begroot_eur||0).toLocaleString('nl-NL',{minimumFractionDigits:2})}</span>`
           + `</div>`
         ).join('');
       }
