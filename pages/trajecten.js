@@ -92,11 +92,11 @@ export default async function mount(app){
           <div class="field">
             <label>Type financiering</label>
             <select id="f-fin-type" class="filter-input">
-              <option value="">Kies…</option>
-              <option>Provincie</option>
-              <option>Gemeente</option>
-              <option>Fonds</option>
-              <option>Anders</option>
+              <option>SportAkkoord</option>
+              <option>Rabo Clubsupport</option>
+              <option>Servicelijst</option>
+              <option>SIIF</option>
+              <option>ander fonds</option>
             </select>
           </div>
           <div class="field">
@@ -218,7 +218,7 @@ export default async function mount(app){
     const { data, error } = await supabase
       .from('clubs')
       .select('"Nr.", "Naam", "Vestigingsgemeente", "Postadres"')
-      .or(`Naam.ilike.%${q}%, "Nr.".eq.${q}`)
+      .or(`Naam.ilike.%${q}%, "Subsoort organisatie".ilike.%${q}%, "Nr.".eq.${q}`)
       .limit(15);
     if (error){ console.error(error); return; }
     $('#club-dd').innerHTML = (data||[]).map(r => `
@@ -240,19 +240,48 @@ export default async function mount(app){
 
   function parseMoney(val){ if (!val) return 0; return parseFloat(String(val).replace(/[€\s\.]/g,'').replace(',', '.')) || 0; }
   function parsePct(val){ return parseFloat(String(val).replace(',', '.')) || 0; }
-  function calcCoverage(){
-    const begroot = parseMoney($('#f-begroot').value);
-    const finPct  = parsePct($('#f-fin-pct').value);
-    let finEur    = parseMoney($('#f-fin-eur').value);
-    const eigPct  = parsePct($('#f-eigen-pct').value);
-    let eigEur    = parseMoney($('#f-eigen-eur').value);
-    if (finPct>0 && begroot>0) finEur = (begroot * finPct/100);
-    if (eigPct>0 && begroot>0) eigEur = (begroot * eigPct/100);
-    const dekking = (finEur + eigEur);
-    const dekPct = begroot>0 ? 100*dekking/begroot : 0;
-    const rest = Math.max(0, begroot - dekking);
-    const restPct = begroot>0 ? 100*rest/begroot : 100;
-    $('#dekking').textContent = `Dekking: ${dekPct.toFixed(1)}% (${(dekking||0).toLocaleString('nl-NL',{style:'currency',currency:'EUR'})}) • Restant: ${restPct.toFixed(1)}% (${(rest||0).toLocaleString('nl-NL',{style:'currency',currency:'EUR'})})`;
+  
+function calcCoverage(){
+  const begroot = parseMoney($('#f-begroot').value);
+
+  // read current values
+  let finPct  = parsePct($('#f-fin-pct').value);
+  let finEur  = parseMoney($('#f-fin-eur').value);
+  let eigPct  = parsePct($('#f-eigen-pct').value);
+  let eigEur  = parseMoney($('#f-eigen-eur').value);
+
+  // Decide direction based on active input to avoid fighting
+  const activeId = document.activeElement && document.activeElement.id;
+
+  if (begroot > 0){
+    // Financiering
+    if (activeId === 'f-fin-pct' || (finPct && !finEur)){
+      finEur = begroot * (finPct/100);
+      $('#f-fin-eur').value = finEur.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } else if (activeId === 'f-fin-eur' || (finEur && !finPct)){
+      finPct = 100 * finEur / begroot;
+      // One decimal is usually enough for percentages
+      $('#f-fin-pct').value = finPct.toFixed(1).replace('.',',');
+    }
+
+    // Eigen bijdrage
+    if (activeId === 'f-eigen-pct' || (eigPct && !eigEur)){
+      eigEur = begroot * (eigPct/100);
+      $('#f-eigen-eur').value = eigEur.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } else if (activeId === 'f-eigen-eur' || (eigEur && !eigPct)){
+      eigPct = 100 * eigEur / begroot;
+      $('#f-eigen-pct').value = eigPct.toFixed(1).replace('.',',');
+    }
+  }
+
+  const dekking = (finEur + eigEur);
+  const dekPct = begroot>0 ? 100*dekking/begroot : 0;
+  const rest = Math.max(0, begroot - dekking);
+  const restPct = begroot>0 ? 100*rest/begroot : 100;
+
+  $('#dekking').textContent = `Dekking: ${dekPct.toFixed(1)}% (${dekking.toLocaleString('nl-NL',{style:'currency',currency:'EUR'})}) • Restant: ${restPct.toFixed(1)}% (${rest.toLocaleString('nl-NL',{style:'currency',currency:'EUR'})})`;
+}
+% (${(dekking||0).toLocaleString('nl-NL',{style:'currency',currency:'EUR'})}) • Restant: ${restPct.toFixed(1)}% (${(rest||0).toLocaleString('nl-NL',{style:'currency',currency:'EUR'})})`;
   }
 
   async function save(){
