@@ -240,17 +240,16 @@ export default async function mount(app){
 
   function parseMoney(val){ if (!val) return 0; return parseFloat(String(val).replace(/[€\s\.]/g,'').replace(',', '.')) || 0; }
   function parsePct(val){ return parseFloat(String(val).replace(',', '.')) || 0; }
-  
-function calcCoverage(){
+  function calcCoverage(){
   const begroot = parseMoney($('#f-begroot').value);
 
-  // read current values
+  // Current values
   let finPct  = parsePct($('#f-fin-pct').value);
   let finEur  = parseMoney($('#f-fin-eur').value);
   let eigPct  = parsePct($('#f-eigen-pct').value);
   let eigEur  = parseMoney($('#f-eigen-eur').value);
 
-  // Decide direction based on active input to avoid fighting
+  // Determine direction (avoid fighting updates)
   const activeId = document.activeElement && document.activeElement.id;
 
   if (begroot > 0){
@@ -260,7 +259,6 @@ function calcCoverage(){
       $('#f-fin-eur').value = finEur.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     } else if (activeId === 'f-fin-eur' || (finEur && !finPct)){
       finPct = 100 * finEur / begroot;
-      // One decimal is usually enough for percentages
       $('#f-fin-pct').value = finPct.toFixed(1).replace('.',',');
     }
 
@@ -281,8 +279,6 @@ function calcCoverage(){
 
   $('#dekking').textContent = `Dekking: ${dekPct.toFixed(1)}% (${dekking.toLocaleString('nl-NL',{style:'currency',currency:'EUR'})}) • Restant: ${restPct.toFixed(1)}% (${rest.toLocaleString('nl-NL',{style:'currency',currency:'EUR'})})`;
 }
-% (${(dekking||0).toLocaleString('nl-NL',{style:'currency',currency:'EUR'})}) • Restant: ${restPct.toFixed(1)}% (${(rest||0).toLocaleString('nl-NL',{style:'currency',currency:'EUR'})})`;
-  }
 
   async function save(){
     if (!state.club){ alert('Kies eerst een club.'); return; }
