@@ -167,8 +167,6 @@ export default async function mount(app){
     const id = btn?.dataset.id || card?.dataset.id;
     if (id) { openEditById(id); }
   });
-document.getElementById('f-status').value=''; await init();
-
   async function init(){
     // Check deep-link from CRM
     const toOpen = sessionStorage.getItem('openTrajectId');
@@ -366,7 +364,7 @@ function parseDateNL(val){
   $('#dekking').textContent = `Dekking: ${dekPct.toFixed(1)}% (${dekking.toLocaleString('nl-NL',{style:'currency',currency:'EUR'})}) • Restant: ${restPct.toFixed(1)}% (${rest.toLocaleString('nl-NL',{style:'currency',currency:'EUR'})})`;
 }
 
-  async function save(){
+  async async function save(){
     if (!state.club){ alert('Kies eerst een club.'); return; }
     const payload = {
       club_nr: String(state.club['Nr.']),
