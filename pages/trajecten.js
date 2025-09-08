@@ -182,7 +182,7 @@ export default async function mount(app){
         <h3>${r.titel || (r.type || 'Traject')}</h3>
         <div class="meta">🏟️ ${r.club_naam} <span class="muted">(#${r.club_nr})</span></div>
         <div class="meta">📅 ${r.start_datum || '—'} → ${r.eind_datum || '—'}</div>
-        <div class="meta">🏷️ ${r.type || '—'} • <strong>${r.status}</strong> • ${r.stage || '-'}</div>
+        <div class="meta">🏷️ ${r.type || '—'} • <strong>${r.status}</strong> </div>
       </article>
     `).join('');
   }
@@ -287,7 +287,7 @@ export default async function mount(app){
       club_naam: state.club['Naam'],
       titel: $('#f-type').value || 'Traject',
       type: $('#f-type').value || null,
-      status: 'Lopend',
+      status: ($('#f-stage-new')?.value || 'Intake'),
       start_datum: $('#f-start').value || null,
       eind_datum: $('#f-eind').value || null,
       eigenaar: $('#f-eigenaar').value || $('#f-begeleider').value || null,
@@ -300,9 +300,7 @@ export default async function mount(app){
       financiering_pct: parsePct($('#f-fin-pct').value) || null,
       financiering_eur: parseMoney($('#f-fin-eur').value) || null,
       eigen_pct: parsePct($('#f-eigen-pct').value) || null,
-      eigen_eur: parseMoney($('#f-eigen-eur').value) || null,
-      stage: $('#f-stage-new').value || null,
-      laatste_update: $('#f-last').value || null
+      eigen_eur: parseMoney($('#f-eigen-eur').value) || null,      laatste_update: $('#f-last').value || null
     };
     const { error } = await supabase.from('trajecten').insert(payload);
     if (error){ console.error(error); alert('Opslaan mislukt. Controleer of de tabel en policies bestaan.'); return; }
