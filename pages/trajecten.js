@@ -52,20 +52,25 @@ export default async function mount(app){
           <div class="field">
             <label>Type traject</label>
             <select id="f-type" class="filter-input">
-              <option value="">Kies…</option>
-              <option>Begeleiding</option>
-              <option>Cursus</option>
-              <option>Advies</option>
-              <option>Traject</option>
+              <option>ClubKaderCoach</option>
+              <option>Rabo Clubsupport</option>
+              <option>OldStars</option>
+              <option>Sportakkoord Traject</option>
             </select>
           </div>
           <div class="field">
             <label>Clubondersteuner</label>
             <select id="f-eigenaar" class="filter-input">
-              <option value="">Kies…</option>
-              <option>Coach A</option>
-              <option>Coach B</option>
-              <option>Coach C</option>
+              <option>Aimee</option>
+              <option>Allard</option>
+              <option>Birgitta</option>
+              <option>Demi</option>
+              <option>Jorick</option>
+              <option>Justin</option>
+              <option>Marvin</option>
+              <option>Rainer</option>
+              <option>Sybren</option>
+              <option>Tjardo</option>
             </select>
           </div>
           <div class="field">
@@ -114,11 +119,13 @@ export default async function mount(app){
             <div id="dekking" class="muted">Dekking: 0.0% (0.00 EUR) • Restant: 100.0% (0.00 EUR)</div>
           </div>
           <div class="field">
-            <label>Stage</label>
+            <label>Status</label>
             <select id="f-stage-new" class="filter-input">
               <option>Intake</option>
               <option>Uitvoering</option>
               <option>Evaluatie</option>
+              <option>Afgerond</option>
+              <option>Geannuleerd</option>
             </select>
           </div>
           <div class="field">
