@@ -240,6 +240,17 @@ export default async function mount(app){
 
   function parseMoney(val){ if (!val) return 0; return parseFloat(String(val).replace(/[€\s\.]/g,'').replace(',', '.')) || 0; }
   function parsePct(val){ return parseFloat(String(val).replace(',', '.')) || 0; }
+
+function parseDateNL(val){
+  if (!val) return null;
+  // accepts dd-mm-jjjj or yyyy-mm-dd
+  const v = String(val).trim();
+  const m1 = v.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (m1) return `${m1[3]}-${m1[2]}-${m1[1]}`; // to ISO
+  const m2 = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m2) return v; // already ISO
+  return null;
+}
   function calcCoverage(){
   const begroot = parseMoney($('#f-begroot').value);
 
@@ -288,8 +299,8 @@ export default async function mount(app){
       titel: $('#f-type').value || 'Traject',
       type: $('#f-type').value || null,
       status: ($('#f-stage-new')?.value || 'Intake'),
-      start_datum: $('#f-start').value || null,
-      eind_datum: $('#f-eind').value || null,
+      start_datum: parseDateNL($('#f-start').value) || null,
+      eind_datum: parseDateNL($('#f-eind').value) || null,
       eigenaar: $('#f-eigenaar').value || $('#f-begeleider').value || null,
       notities: $('#f-note').value || null,
       tags: null,
@@ -300,10 +311,10 @@ export default async function mount(app){
       financiering_pct: parsePct($('#f-fin-pct').value) || null,
       financiering_eur: parseMoney($('#f-fin-eur').value) || null,
       eigen_pct: parsePct($('#f-eigen-pct').value) || null,
-      eigen_eur: parseMoney($('#f-eigen-eur').value) || null,      laatste_update: $('#f-last').value || null
+      eigen_eur: parseMoney($('#f-eigen-eur').value) || null,      laatste_update: parseDateNL($('#f-last').value) || null
     };
     const { error } = await supabase.from('trajecten').insert(payload);
-    if (error){ console.error(error); alert('Opslaan mislukt. Controleer of de tabel en policies bestaan.'); return; }
+    if (error){ console.error('Supabase insert error:', error); alert('Opslaan mislukt: ' + (error.message||error)); return; }
     closeModal();
     await init();
   }
