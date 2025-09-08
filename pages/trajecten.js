@@ -18,10 +18,11 @@ export default async function mount(app){
         <input id="q" class="filter-input" placeholder="🔍 Zoek op club of titel…">
         <select id="f-status" class="filter-input" style="max-width:220px">
           <option value="">Alle status</option>
-          <option>Nieuw</option>
-          <option selected>Lopend</option>
+          <option>Intake</option>
+          <option>Uitvoering</option>
+          <option>Evaluatie</option>
           <option>Afgerond</option>
-          <option>Gepauzeerd</option>
+          <option>Geannuleerd</option>
         </select>
         <select id="f-stage" class="filter-input" style="max-width:220px">
           <option value="">Alle stages</option>
@@ -158,7 +159,7 @@ export default async function mount(app){
   $('#f-status').addEventListener('change', renderList);
   $('#f-stage').addEventListener('change', renderList);
 
-  await init();
+  document.getElementById('f-status').value=''; await init();
 
   async function init(){
     const { data, error } = await supabase.from('trajecten').select('*').order('created_at', { ascending:false }).limit(1000);
@@ -298,7 +299,7 @@ function parseDateNL(val){
       club_naam: state.club['Naam'],
       titel: $('#f-type').value || 'Traject',
       type: $('#f-type').value || null,
-      status: ($('#f-stage-new')?.value || 'Intake'),
+      status: (($('#f-status') && $('#f-status').value) || ($('#f-stage-new') && $('#f-stage-new').value) || 'Intake'),
       start_datum: parseDateNL($('#f-start').value) || null,
       eind_datum: parseDateNL($('#f-eind').value) || null,
       eigenaar: $('#f-eigenaar').value || $('#f-begeleider').value || null,
@@ -316,7 +317,7 @@ function parseDateNL(val){
     const { error } = await supabase.from('trajecten').insert(payload);
     if (error){ console.error('Supabase insert error:', error); alert('Opslaan mislukt: ' + (error.message||error)); return; }
     closeModal();
-    await init();
+    document.getElementById('f-status').value=''; await init();
   }
 
   function extractPlaats(postadres=''){
