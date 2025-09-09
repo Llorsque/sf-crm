@@ -1,3 +1,4 @@
+const VER = '20';
 const app = document.getElementById('app');
 const nav = document.getElementById('nav');
 const statusEl = document.getElementById('sb-status');
@@ -16,27 +17,45 @@ document.getElementById('btn-refresh').addEventListener('click', function () {
   loadPage(active);
 });
 
+function importFallback(page){
+  const base = `./pages/${page}.js`;
+  const urls = [`${base}?v=${VER}`, `${base}?cb=${Date.now()}`, base];
+  let last = null;
+  function next(i){
+    if (i >= urls.length) return Promise.reject(last || new Error('All imports failed'));
+    const url = urls[i];
+    console.log('[loader] try import', url);
+    return import(url).catch(err => { console.error('[loader] import failed', url, err); last = err; return next(i+1); });
+  }
+  return next(0);
+}
+
+function preflight(page){
+  const url = `./pages/${page}.js?chk=${VER}`;
+  return fetch(url, { cache: 'no-store' }).then(res => {
+    console.log('[loader] preflight', url, res.status);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return true;
+  });
+}
+
 function loadPage(page){
   app.innerHTML = '<div class="panel"><p><strong>' + page + '</strong> wordt geladen…</p></div>';
-  var cacheBust = '17';
-  var modUrl = './pages/' + page + '.js?v=' + cacheBust;
-
-  // extra logging om precies te zien wat er misgaat
-  console.log('[loader] import', modUrl);
-  import(modUrl)
-    .then(function (module) {
-      console.log('[loader] imported ok:', modUrl, module);
+  preflight(page)
+    .catch((e)=>{ console.warn('[loader] preflight failed:', e && e.message ? e.message : e); /* alsnog importen om syntaxfout te tonen */ })
+    .then(()=> importFallback(page))
+    .then((module) => {
+      console.log('[loader] imported ok:', page, module);
       if (module && typeof module.default === 'function'){
-        var res = module.default(app);
-        if (res && typeof res.then === 'function'){ return res; }
-        return Promise.resolve();
+        const res = module.default(app);
+        return (res && typeof res.then === 'function') ? res : Promise.resolve();
       } else {
         throw new Error('Module ' + page + ' heeft geen default export');
       }
     })
-    .catch(function (err) {
+    .catch((err) => {
       console.error('Module load error:', err);
-      var tried = page + '.js?v=' + cacheBust;
+      const tried = 'trajecten.js?v=' + VER;
       app.innerHTML = '<div class="alert err">Module <strong>' + page + '</strong> niet gevonden of met fout geladen.<br><small>Probeerde: ' + tried + '</small></div>';
     });
 }
