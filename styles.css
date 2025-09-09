@@ -100,3 +100,8 @@ h1{ font-size:1.4rem; margin:0 }
 /* --- Modal stacking context fix --- */
 #modal, .modal { z-index: 1001; }
 #modal-overlay { z-index: 1000; }
+
+
+/* Enhancements: clickable traject link in details */
+.kv a.link-traject { text-decoration: underline; font-weight: 600; }
+.kv a.link-traject:hover { text-decoration: none; }
