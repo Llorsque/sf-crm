@@ -18,10 +18,11 @@ export default async function mount(app){
         <input id="q" class="filter-input" placeholder="🔍 Zoek op club of titel…">
         <select id="f-status" class="filter-input" style="max-width:220px">
           <option value="">Alle status</option>
-          <option>Nieuw</option>
-          <option selected>Lopend</option>
+          <option>Intake</option>
+          <option>Uitvoering</option>
+          <option>Evaluatie</option>
           <option>Afgerond</option>
-          <option>Gepauzeerd</option>
+          <option>Geannuleerd</option>
         </select>
         <select id="f-stage" class="filter-input" style="max-width:220px">
           <option value="">Alle stages</option>
@@ -158,7 +159,7 @@ export default async function mount(app){
   $('#f-status').addEventListener('change', renderList);
   $('#f-stage').addEventListener('change', renderList);
 
-  await init();
+  document.getElementById('f-status').value=''; await init();
 
   async function init(){
     const { data, error } = await supabase.from('trajecten').select('*').order('created_at', { ascending:false }).limit(1000);
@@ -182,7 +183,7 @@ export default async function mount(app){
         <h3>${r.titel || (r.type || 'Traject')}</h3>
         <div class="meta">🏟️ ${r.club_naam} <span class="muted">(#${r.club_nr})</span></div>
         <div class="meta">📅 ${r.start_datum || '—'} → ${r.eind_datum || '—'}</div>
-        <div class="meta">🏷️ ${r.type || '—'} • <strong>${r.status}</strong> • ${r.stage || '-'}</div>
+        <div class="meta">🏷️ ${r.type || '—'} • <strong>${r.status}</strong> </div>
       </article>
     `).join('');
   }
@@ -240,6 +241,17 @@ export default async function mount(app){
 
   function parseMoney(val){ if (!val) return 0; return parseFloat(String(val).replace(/[€\s\.]/g,'').replace(',', '.')) || 0; }
   function parsePct(val){ return parseFloat(String(val).replace(',', '.')) || 0; }
+
+function parseDateNL(val){
+  if (!val) return null;
+  // accepts dd-mm-jjjj or yyyy-mm-dd
+  const v = String(val).trim();
+  const m1 = v.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (m1) return `${m1[3]}-${m1[2]}-${m1[1]}`; // to ISO
+  const m2 = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m2) return v; // already ISO
+  return null;
+}
   function calcCoverage(){
   const begroot = parseMoney($('#f-begroot').value);
 
@@ -287,9 +299,9 @@ export default async function mount(app){
       club_naam: state.club['Naam'],
       titel: $('#f-type').value || 'Traject',
       type: $('#f-type').value || null,
-      status: 'Lopend',
-      start_datum: $('#f-start').value || null,
-      eind_datum: $('#f-eind').value || null,
+      status: (($('#f-status') && $('#f-status').value) || ($('#f-stage-new') && $('#f-stage-new').value) || 'Intake'),
+      start_datum: parseDateNL($('#f-start').value) || null,
+      eind_datum: parseDateNL($('#f-eind').value) || null,
       eigenaar: $('#f-eigenaar').value || $('#f-begeleider').value || null,
       notities: $('#f-note').value || null,
       tags: null,
@@ -300,14 +312,12 @@ export default async function mount(app){
       financiering_pct: parsePct($('#f-fin-pct').value) || null,
       financiering_eur: parseMoney($('#f-fin-eur').value) || null,
       eigen_pct: parsePct($('#f-eigen-pct').value) || null,
-      eigen_eur: parseMoney($('#f-eigen-eur').value) || null,
-      stage: $('#f-stage-new').value || null,
-      laatste_update: $('#f-last').value || null
+      eigen_eur: parseMoney($('#f-eigen-eur').value) || null,      laatste_update: parseDateNL($('#f-last').value) || null
     };
     const { error } = await supabase.from('trajecten').insert(payload);
-    if (error){ console.error(error); alert('Opslaan mislukt. Controleer of de tabel en policies bestaan.'); return; }
+    if (error){ console.error('Supabase insert error:', error); alert('Opslaan mislukt: ' + (error.message||error)); return; }
     closeModal();
-    await init();
+    document.getElementById('f-status').value=''; await init();
   }
 
   function extractPlaats(postadres=''){
