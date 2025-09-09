@@ -1,22 +1,358 @@
-
 import { supabase } from '../supabaseClient.js';
-function $(s,r){return (r||document).querySelector(s);} function on(e,t,f){e&&e.addEventListener(t,f);}
-function fmt(n){n=Number(n||0);return n.toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function pE(v){if(v==null)return 0;return parseFloat(String(v).replace(/\./g,'').replace(',','.'))||0;}
-function pP(v){if(v==null||v==='')return null;return parseFloat(String(v).replace(',','.'));}
-function iso(v){if(!v)return null;v=String(v).trim();var m=v.match(/^(\d{2})-(\d{2})-(\d{4})$/);if(m)return m[3]+'-'+m[2]+'-'+m[1];var m2=v.match(/^(\d{4})-(\d{2})-(\d{2})$/);return m2?v:null;}
-function nl(v){if(!v)return'';var s=String(v).slice(0,10).split('-');return s.length===3?(s[2]+'-'+s[1]+'-'+s[0]):v;}
-var CSS='.sf-trajecten .pagebar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px}.sf-trajecten .page-title{margin:0;font-size:20px}.sf-trajecten .toolbar{display:flex;align-items:center;gap:8px}.sf-trajecten .lbl{font-size:12px;color:#64748b}.sf-trajecten .input{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;font:inherit}.sf-trajecten .input.right{text-align:right}.sf-trajecten .btn{border:0;border-radius:12px;padding:10px 14px;cursor:pointer;background:#e8eef8}.sf-trajecten .btn.primary{background:#0ea5e9;color:#fff}.sf-trajecten .btn.ghost{background:transparent;border:1px solid #cbd5e1;color:#0f172a}.sf-trajecten .btn-secondary{border:1px solid #cbd5e1;background:#fff;border-radius:12px;padding:8px 12px;cursor:pointer}.sf-trajecten .icon-btn{background:#fff;border:1px solid #e5e7eb;border-radius:10px;width:36px;height:36px;line-height:34px;text-align:center;cursor:pointer}.sf-trajecten .i-plus::before{content:"+";display:inline-block;margin-right:4px;font-weight:600}.sf-trajecten .grid{display:grid;gap:12px}.sf-trajecten .grid.two{grid-template-columns:1fr 1fr}.sf-trajecten .cards.grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}.sf-trajecten .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.03)}.sf-trajecten .card-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.sf-trajecten .title{margin:0;font-size:16px}.sf-trajecten .chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.sf-trajecten .meta-row{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}.sf-trajecten .chip{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:4px 10px;font-size:12px}.sf-trajecten .badge{border-radius:999px;padding:2px 8px;font-size:12px;border:1px solid transparent}.sf-trajecten .badge-type{background:#eef2ff;border-color:#c7d2fe}.sf-trajecten .badge-default{background:#e5e7eb;color:#111827}.sf-trajecten .badge-intake{background:#fff7ed;border-color:#fed7aa;color:#9a3412}.sf-trajecten .badge-uitvoering{background:#ecfeff;border-color:#a5f3fc;color:#155e75}.sf-trajecten .badge-evaluatie{background:#fdf4ff;border-color:#e9d5ff;color:#6b21a8}.sf-trajecten .badge-afgerond{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}.sf-trajecten .badge-geannuleerd{background:#fef2f2;border-color:#fecaca;color:#991b1b}.sf-trajecten .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:saturate(90%) blur(2px);display:none}.sf-trajecten .modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);max-height:85vh;overflow:auto;width:920px;z-index:1000;border-radius:16px;display:none}.sf-trajecten .modal-header{display:flex;align-items:center;gap:8px}.sf-trajecten .modal-header h3{margin:0;flex:1}.sf-trajecten .form.grid.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.sf-trajecten .form-field.full{grid-column:1/3}.sf-trajecten .input-group{display:flex;align-items:center}.sf-trajecten .input-group .addon{margin-left:8px;color:#64748b;font-size:12px}.sf-trajecten .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}.sf-trajecten .loading-row,.sf-trajecten .empty{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;padding:16px;color:#475569}.sf-trajecten .dropdown{border:1px solid #e5e7eb;background:#fff;border-radius:10px;margin-top:4px;max-height:180px;overflow:auto}.sf-trajecten .dropdown .opt{padding:8px 10px;cursor:pointer}.sf-trajecten .dropdown .opt:hover{background:#f1f5f9}.sf-trajecten .dd-empty{padding:8px 10px;color:#64748b}';
-function inject(){if(document.getElementById('trajecten-scope'))return;var s=document.createElement('style');s.id='trajecten-scope';s.textContent=CSS;document.head.appendChild(s);}
-function statusBadge(x){var s=(x||'').toLowerCase(),c='badge ';if(s==='intake')c+='badge-intake';else if(s==='uitvoering')c+='badge-uitvoering';else if(s==='evaluatie')c+='badge-evaluatie';else if(s==='afgerond')c+='badge-afgerond';else if(s==='geannuleerd')c+='badge-geannuleerd';else c+='badge-default';return '<span class="'+c+'">'+(x||'-')+'</span>';}
-function typeBadge(t){return '<span class="badge badge-type">'+(t||'—')+'</span>';}
-function cov(r){var b=Number(r.begroot_eur||0),f=Number(r.financiering_eur||0),e=Number(r.eigen_eur||0);var k=b>0?Math.min(100,Math.round(100*(f+e)/b)):0;return {covered:k,rest:Math.max(0,100-k)};}
-function tpl(){return '<div class="sf-trajecten"><div class="panel page-trajecten"><div class="pagebar"><div class="left"><h2 class="page-title">Trajecten</h2></div><div class="right"><div class="toolbar"><label class="lbl">Status</label><select id="f-status-filter" class="input"><option value="">Alle</option><option>Intake</option><option>Uitvoering</option><option>Evaluatie</option><option>Afgerond</option><option>Geannuleerd</option></select><button id="btn-new" class="btn primary"><span class="i-plus"></span>Nieuw traject</button></div></div></div><div id="list" class="cards grid"></div></div><div class="modal-overlay" id="modal-ov"></div><div class="panel modal" id="modal"><div class="modal-header"><h3 id="dlg-title">Nieuw traject</h3><button id="dlg-close" class="icon-btn" aria-label="Sluiten">×</button></div><div class="form grid two"><div class="form-field"><label>Vereniging (uit database)</label><input id="club-q" class="input" placeholder="Zoek op naam of sport…" autocomplete="off"/><div id="club-dd" class="dropdown"></div></div><div class="form-field"><label>Type traject</label><select id="f-type" class="input"><option>ClubKaderCoach</option><option>Rabo Clubsupport</option><option>OldStars</option><option>Sportakkoord Traject</option></select></div><div class="form-field"><label>Status</label><select id="f-status" class="input"><option>Intake</option><option>Uitvoering</option><option>Evaluatie</option><option>Afgerond</option><option>Geannuleerd</option></select></div><div class="form-field"><label>Trajectbegeleider</label><select id="f-eigenaar" class="input"><option>Aimee</option><option>Allard</option><option>Birgitta</option><option>Demi</option><option>Jorick</option><option>Justin</option><option>Marvin</option><option>Rainer</option><option>Sybren</option><option>Tjardo</option></select></div><div class="form-field"><label>Start traject</label><input id="f-start" class="input" placeholder="dd-mm-jjjj"/></div><div class="form-field"><label>Verwacht einde</label><input id="f-eind" class="input" placeholder="dd-mm-jjjj"/></div><div class="form-field"><label>Begroot (€)</label><input id="f-begroot" class="input right" value="0,00"/></div><div class="form-field"><label>Type financiering</label><select id="f-fin-type" class="input"><option>SportAkkoord</option><option>Rabo Clubsupport</option><option>Servicelijst</option><option>SIIF</option><option>ander fonds</option></select></div><div class="form-field"><label>Financiering %</label><div class="input-group"><input id="f-fin-pct" class="input right" placeholder="%"/><span class="addon">%</span></div></div><div class="form-field"><label>Financiering €</label><div class="input-group"><input id="f-fin-eur" class="input right" value="0,00"/><span class="addon">€</span></div></div><div class="form-field"><label>Eigen bijdrage %</label><div class="input-group"><input id="f-eigen-pct" class="input right" placeholder="%"/><span class="addon">%</span></div></div><div class="form-field"><label>Eigen bijdrage €</label><div class="input-group"><input id="f-eigen-eur" class="input right" value="0,00"/><span class="addon">€</span></div></div><div class="form-field full"><label>Notities</label><textarea id="f-note" class="input" rows="3"></textarea></div></div><div class="modal-footer"><button id="dlg-cancel" class="btn ghost">Annuleren</button><button id="dlg-save" class="btn primary">Opslaan</button></div></div></div>'; }
-function render(){var root=$('.sf-trajecten');var list=$('#list',root);var st=$('#f-status-filter',root).value;var rows=(state.list||[]).filter(function(r){return !st||r.status===st;});if(!rows.length){list.innerHTML='<div class="empty">Nog geen trajecten gevonden.</div>';return;}list.innerHTML=rows.map(function(r){var c=cov(r);return '<article class="card t-card" data-id="'+r.id+'"><div class="card-head"><h4 class="title">'+(r.titel||r.club_naam||'-')+'</h4><div class="chips">'+typeBadge(r.type)+statusBadge(r.status)+'</div></div><div class="meta-row"><span class="chip">Begroot: € '+fmt(r.begroot_eur)+'</span><span class="chip">Dekking: '+c.covered+'%</span></div><div class="actions"><button class="btn-secondary btn-edit" data-id="'+r.id+'">Bewerken</button></div></article>';}).join('');}
-var state={list:[],editId:null,club:null};
-function load(){var root=$('.sf-trajecten');$('#list',root).innerHTML='<div class="loading-row">Laden…</div>';supabase.from('trajecten').select('*').order('created_at',{ascending:false}).then(function({data,error}){if(error){console.error(error);$('#list',root).innerHTML='<div class="alert err">Laden mislukt</div>';return;}state.list=data||[];render();});}
-function prefill(r){$('#dlg-title').textContent='Traject bewerken';$('#f-type').value=r.type||$('#f-type').value;$('#f-status').value=r.status||$('#f-status').value;$('#f-eigenaar').value=r.eigenaar||$('#f-eigenaar').value;$('#f-start').value=nl(r.start_datum);$('#f-eind').value=nl(r.eind_datum);$('#f-begroot').value=fmt(r.begroot_eur);$('#f-fin-type').value=r.financiering_type||$('#f-fin-type').value;$('#f-fin-pct').value=r.financiering_pct==null?'':String(r.financiering_pct).replace('.',',');$('#f-fin-eur').value=fmt(r.financiering_eur);$('#f-eigen-pct').value=r.eigen_pct==null?'':String(r.eigen_pct).replace('.',',');$('#f-eigen-eur').value=fmt(r.eigen_eur);$('#f-note').value=r.notities||'';$('#club-q').value=r.club_naam?(r.club_naam+' (#'+(r.club_nr||'')+')'):'';state.club=r.club_nr?{'Nr.':r.club_nr,'Naam':r.club_naam,'Vestigingsgemeente':r.gemeente||''}:null;}
-function collect(){var b=pE($('#f-begroot').value),fp=pP($('#f-fin-pct').value),fe=pE($('#f-fin-eur').value),ep=pP($('#f-eigen-pct').value),ee=pE($('#f-eigen-eur').value);if(b>0){if(fp!=null&&(!fe||fe===0))fe=b*(fp/100);if(fe&&fe>0&&(fp==null||fp===0))fp=100*fe/b;if(ep!=null&&(!ee||ee===0))ee=b*(ep/100);if(ee&&ee>0&&(ep==null||ep===0))ep=100*ee/b;}var c=state.club||{};return {club_nr:c['Nr.']?String(c['Nr.']):null,club_naam:c['Naam']||null,gemeente:c['Vestigingsgemeente']||null,titel:c['Naam']||null,type:$('#f-type').value,status:$('#f-status').value,eigenaar:$('#f-eigenaar').value,notities:$('#f-note').value||null,start_datum:iso($('#f-start').value),eind_datum:iso($('#f-eind').value),laatste_update:null,begroot_eur:b||0,financiering_type:$('#f-fin-type').value,financiering_pct:fp,financiering_eur:fe||0,eigen_pct:ep,eigen_eur:ee||0};}
-function finance(){var lock=false;function fromPct(){if(lock)return;lock=true;var b=pE($('#f-begroot').value),p=pP($('#f-fin-pct').value),ep=pP($('#f-eigen-pct').value);if(b>0&&p!=null)$('#f-fin-eur').value=fmt(b*(p/100));if(b>0&&ep!=null)$('#f-eigen-eur').value=fmt(b*(ep/100));lock=false;}function fromEur(){if(lock)return;lock=true;var b=pE($('#f-begroot').value),e=pE($('#f-fin-eur').value),ee=pE($('#f-eigen-eur').value);if(b>0&&e)$('#f-fin-pct').value=String((100*e/b).toFixed(2)).replace('.',',');if(b>0&&ee)$('#f-eigen-pct').value=String((100*ee/b).toFixed(2)).replace('.',',');lock=false;}on($('#f-begroot'),'input',fromPct);on($('#f-fin-pct'),'input',fromPct);on($('#f-eigen-pct'),'input',fromPct);on($('#f-fin-eur'),'input',fromEur);on($('#f-eigen-eur'),'input',fromEur);}
-function clubSearch(){var dd=$('#club-dd');function search(q){if(!q||q.length<2){dd.innerHTML='';return;}var expr='Naam.ilike.%'+q+'%, "Subsoort organisatie".ilike.%'+q+'%';supabase.from('clubs').select('"Nr.", Naam, "Vestigingsgemeente"').or(expr).limit(10).then(function({data,error}){if(error){console.error(error);dd.innerHTML='<div class="dd-empty">Zoeken mislukt</div>';return;}if(!data||!data.length){dd.innerHTML='<div class="dd-empty">Geen resultaten</div>';return;}dd.innerHTML=data.map(function(r){return '<div class="opt" data-nr="'+r['Nr.']+'" data-naam="'+(r['Naam']||'')+'" data-gem="'+(r['Vestigingsgemeente']||'')+'">'+(r['Naam']||'')+' <small>#'+r['Nr.']+'</small></div>';}).join('');});}on($('#club-q'),'input',function(e){search(e.target.value.trim());});on(dd,'click',function(e){var o=e.target.closest('.opt');if(!o)return;state.club={'Nr.':o.getAttribute('data-nr'),'Naam':o.getAttribute('data-naam'),'Vestigingsgemeente':o.getAttribute('data-gem')};$('#club-q').value=o.getAttribute('data-naam')+' (#'+o.getAttribute('data-nr')+')';dd.innerHTML='';});}
-export default function mount(app){if(!document.getElementById('trajecten-scope')){var s=document.createElement('style');s.id='trajecten-scope';s.textContent=CSS;document.head.appendChild(s);}app.innerHTML=tpl();finance();clubSearch();on($('#f-status-filter'),'change',function(){render();});var ov=$('#modal-ov'),md=$('#modal');function open(){ov.style.display='block';md.style.display='block';}function close(){ov.style.display='none';md.style.display='none';state.editId=null;state.club=null;$('#dlg-title').textContent='Nieuw traject';}on($('#dlg-close'),'click',function(){close();});on($('#dlg-cancel'),'click',function(){close();});on($('#btn-new'),'click',function(){state.editId=null;state.club=null;['club-q','f-start','f-eind','f-begroot','f-fin-pct','f-fin-eur','f-eigen-pct','f-eigen-eur','f-note'].forEach(function(id){var el=$('#'+id);if(el)el.value='';});$('#f-begroot').value='0,00';$('#f-fin-eur').value='0,00';$('#f-eigen-eur').value='0,00';open();});document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.btn-edit');var c=e.target.closest&&e.target.closest('.t-card');var id=(b&&b.getAttribute('data-id'))||(c&&c.getAttribute('data-id'));if(!id)return;var r=(state.list||[]).find(function(x){return String(x.id)===String(id);});if(r){state.editId=r.id;prefill(r);open();}});on($('#dlg-save'),'click',function(){var payload=collect();var req= state.editId ? supabase.from('trajecten').update(payload).eq('id',state.editId) : supabase.from('trajecten').insert(payload);req.then(function({error}){if(error){console.error(error);alert('Opslaan mislukt: '+(error.message||error));return;}close();load();});});load();}
+
+export default async function mount(app){
+  app.innerHTML = `
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
+        <div><h2 style="margin:0">Trajecten</h2><div class="muted">Voeg trajecten toe, gekoppeld aan clubs uit het CRM</div></div>
+        <div style="display:flex; gap:8px">
+          <button id="btn-new" class="btn-accent">➕ Nieuw traject</button>
+          <button id="btn-refresh" class="btn-accent">🔄 Ververs</button>
+          <button id="btn-export" class="btn-accent">⬇️ Export</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px">
+        <input id="q" class="filter-input" placeholder="🔍 Zoek op club of titel…">
+        <select id="f-status" class="filter-input" style="max-width:220px">
+          <option value="">Alle status</option>
+          <option>Nieuw</option>
+          <option selected>Lopend</option>
+          <option>Afgerond</option>
+          <option>Gepauzeerd</option>
+        </select>
+        <select id="f-stage" class="filter-input" style="max-width:220px">
+          <option value="">Alle stages</option>
+          <option>Intake</option>
+          <option>Uitvoering</option>
+          <option>Evaluatie</option>
+        </select>
+      </div>
+      <div id="list" class="grid"></div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal-overlay" class="overlay"></div>
+    <div id="modal" class="modal">
+      <div class="modal-head">
+        <h3>Nieuw traject</h3>
+        <button id="modal-close" class="icon-btn">✖</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>Vereniging (uit database)</label>
+            <div class="club-picker">
+              <input id="club-q" class="filter-input" placeholder="Zoek/Selecteer club…" autocomplete="off"/>
+              <div id="club-dd" class="club-dd"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Type traject</label>
+            <select id="f-type" class="filter-input">
+              <option>ClubKaderCoach</option>
+              <option>Rabo Clubsupport</option>
+              <option>OldStars</option>
+              <option>Sportakkoord Traject</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Clubondersteuner</label>
+            <select id="f-eigenaar" class="filter-input">
+              <option>Aimee</option>
+              <option>Allard</option>
+              <option>Birgitta</option>
+              <option>Demi</option>
+              <option>Jorick</option>
+              <option>Justin</option>
+              <option>Marvin</option>
+              <option>Rainer</option>
+              <option>Sybren</option>
+              <option>Tjardo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Trajectbegeleider</label>
+            <input id="f-begeleider" class="filter-input" placeholder="Naam"/>
+          </div>
+          <div class="field">
+            <label>Start traject</label>
+            <input type="date" id="f-start" class="filter-input"/>
+          </div>
+          <div class="field">
+            <label>Verwacht einde</label>
+            <input type="date" id="f-eind" class="filter-input"/>
+          </div>
+          <div class="field">
+            <label>Begroot (€)</label>
+            <input id="f-begroot" class="filter-input" inputmode="decimal" value="0.00"/>
+          </div>
+          <div class="field">
+            <label>Type financiering</label>
+            <select id="f-fin-type" class="filter-input">
+              <option>SportAkkoord</option>
+              <option>Rabo Clubsupport</option>
+              <option>Servicelijst</option>
+              <option>SIIF</option>
+              <option>ander fonds</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Financiering %</label>
+            <input id="f-fin-pct" class="filter-input" inputmode="numeric" value="0"/>
+          </div>
+          <div class="field">
+            <label>Financiering €</label>
+            <input id="f-fin-eur" class="filter-input" inputmode="decimal" value="0,00"/>
+          </div>
+          <div class="field">
+            <label>Eigen bijdrage %</label>
+            <input id="f-eigen-pct" class="filter-input" inputmode="numeric" value="0"/>
+          </div>
+          <div class="field">
+            <label>Eigen bijdrage €</label>
+            <input id="f-eigen-eur" class="filter-input" inputmode="decimal" value="0,00"/>
+          </div>
+          <div class="field span-2">
+            <div id="dekking" class="muted">Dekking: 0.0% (0.00 EUR) • Restant: 100.0% (0.00 EUR)</div>
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select id="f-stage-new" class="filter-input">
+              <option>Intake</option>
+              <option>Uitvoering</option>
+              <option>Evaluatie</option>
+              <option>Afgerond</option>
+              <option>Geannuleerd</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Laatste update</label>
+            <input type="date" id="f-last" class="filter-input"/>
+          </div>
+          <div class="field span-2">
+            <label>Notities</label>
+            <textarea id="f-note" class="filter-input" rows="5" placeholder=""></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button id="modal-cancel" class="btn-secondary">Annuleren</button>
+        <button id="modal-save" class="btn-accent">Opslaan</button>
+      </div>
+    </div>
+  `;
+
+  injectStyles();
+
+  const $ = (s)=> app.querySelector(s);
+  const state = { list: [], club:null };
+
+  // List filters + boot
+  $('#btn-new').addEventListener('click', openModal);
+  $('#btn-refresh').addEventListener('click', init);
+  $('#btn-export').addEventListener('click', exportCsv);
+  $('#q').addEventListener('input', debounce(renderList, 200));
+  $('#f-status').addEventListener('change', renderList);
+  $('#f-stage').addEventListener('change', renderList);
+
+  await init();
+
+  async function init(){
+    const { data, error } = await supabase.from('trajecten').select('*').order('created_at', { ascending:false }).limit(1000);
+    if (error) { console.error(error); state.list = []; }
+    else state.list = data || [];
+    renderList();
+  }
+
+  function renderList(){
+    const q = ($('#q')?.value||'').toLowerCase();
+    const st = $('#f-status')?.value||'';
+    const sg = $('#f-stage')?.value||'';
+    const rows = state.list.filter(r => {
+      const okQ = !q || (r.club_naam||'').toLowerCase().includes(q) || (r.titel||'').toLowerCase().includes(q);
+      const okS = !st || r.status===st;
+      const okG = !sg || r.stage===sg;
+      return okQ && okS && okG;
+    });
+    $('#list').innerHTML = rows.map(r => `
+      <article class="card">
+        <h3>${r.titel || (r.type || 'Traject')}</h3>
+        <div class="meta">🏟️ ${r.club_naam} <span class="muted">(#${r.club_nr})</span></div>
+        <div class="meta">📅 ${r.start_datum || '—'} → ${r.eind_datum || '—'}</div>
+        <div class="meta">🏷️ ${r.type || '—'} • <strong>${r.status}</strong> • ${r.stage || '-'}</div>
+      </article>
+    `).join('');
+  }
+
+  // Modal
+  function openModal(){
+    state.club = null;
+    $('#modal-overlay').classList.add('show');
+    $('#modal').classList.add('open');
+    $('#modal-close').onclick = closeModal;
+    $('#modal-cancel').onclick = closeModal;
+    $('#modal-save').onclick = save;
+    // defaults
+    const today = new Date().toISOString().slice(0,10);
+    $('#f-last').value = today;
+    // club search events
+    $('#club-q').addEventListener('input', debounce(searchClubs, 250));
+    $('#club-dd').innerHTML = '';
+    // calculate coverage
+    ['f-begroot','f-fin-pct','f-fin-eur','f-eigen-pct','f-eigen-eur'].forEach(id=>{
+      $('#'+id).addEventListener('input', calcCoverage);
+    });
+    calcCoverage();
+  }
+
+  function closeModal(){
+    $('#modal-overlay').classList.remove('show');
+    $('#modal').classList.remove('open');
+  }
+
+  async function searchClubs(){
+    const q = $('#club-q').value.trim();
+    const { data, error } = await supabase
+      .from('clubs')
+      .select('"Nr.", "Naam", "Vestigingsgemeente", "Postadres"')
+      .or(`Naam.ilike.%${q}%, "Subsoort organisatie".ilike.%${q}%, "Nr.".eq.${q}`)
+      .limit(15);
+    if (error){ console.error(error); return; }
+    $('#club-dd').innerHTML = (data||[]).map(r => `
+      <button class="dd-item" data-nr="${r['Nr.']}">
+        <div class="dd-title">${r['Naam']}</div>
+        <div class="dd-sub">${r['Vestigingsgemeente']||''} • ${(r['Postadres']||'')}</div>
+      </button>
+    `).join('');
+    Array.from($('#club-dd').querySelectorAll('.dd-item')).forEach(btn => {
+      btn.addEventListener('click', ()=>{
+        const nr = btn.dataset.nr;
+        const club = (data||[]).find(x => String(x['Nr.'])===String(nr));
+        state.club = club;
+        $('#club-q').value = `${club['Naam']} (#${club['Nr.']})`;
+        $('#club-dd').innerHTML = '';
+      });
+    });
+  }
+
+  function parseMoney(val){ if (!val) return 0; return parseFloat(String(val).replace(/[€\s\.]/g,'').replace(',', '.')) || 0; }
+  function parsePct(val){ return parseFloat(String(val).replace(',', '.')) || 0; }
+  function calcCoverage(){
+  const begroot = parseMoney($('#f-begroot').value);
+
+  // Current values
+  let finPct  = parsePct($('#f-fin-pct').value);
+  let finEur  = parseMoney($('#f-fin-eur').value);
+  let eigPct  = parsePct($('#f-eigen-pct').value);
+  let eigEur  = parseMoney($('#f-eigen-eur').value);
+
+  // Determine direction (avoid fighting updates)
+  const activeId = document.activeElement && document.activeElement.id;
+
+  if (begroot > 0){
+    // Financiering
+    if (activeId === 'f-fin-pct' || (finPct && !finEur)){
+      finEur = begroot * (finPct/100);
+      $('#f-fin-eur').value = finEur.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } else if (activeId === 'f-fin-eur' || (finEur && !finPct)){
+      finPct = 100 * finEur / begroot;
+      $('#f-fin-pct').value = finPct.toFixed(1).replace('.',',');
+    }
+
+    // Eigen bijdrage
+    if (activeId === 'f-eigen-pct' || (eigPct && !eigEur)){
+      eigEur = begroot * (eigPct/100);
+      $('#f-eigen-eur').value = eigEur.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } else if (activeId === 'f-eigen-eur' || (eigEur && !eigPct)){
+      eigPct = 100 * eigEur / begroot;
+      $('#f-eigen-pct').value = eigPct.toFixed(1).replace('.',',');
+    }
+  }
+
+  const dekking = (finEur + eigEur);
+  const dekPct = begroot>0 ? 100*dekking/begroot : 0;
+  const rest = Math.max(0, begroot - dekking);
+  const restPct = begroot>0 ? 100*rest/begroot : 100;
+
+  $('#dekking').textContent = `Dekking: ${dekPct.toFixed(1)}% (${dekking.toLocaleString('nl-NL',{style:'currency',currency:'EUR'})}) • Restant: ${restPct.toFixed(1)}% (${rest.toLocaleString('nl-NL',{style:'currency',currency:'EUR'})})`;
+}
+
+  async function save(){
+    if (!state.club){ alert('Kies eerst een club.'); return; }
+    const payload = {
+      club_nr: String(state.club['Nr.']),
+      club_naam: state.club['Naam'],
+      titel: $('#f-type').value || 'Traject',
+      type: $('#f-type').value || null,
+      status: 'Lopend',
+      start_datum: $('#f-start').value || null,
+      eind_datum: $('#f-eind').value || null,
+      eigenaar: $('#f-eigenaar').value || $('#f-begeleider').value || null,
+      notities: $('#f-note').value || null,
+      tags: null,
+      gemeente: state.club['Vestigingsgemeente'] || null,
+      plaats: extractPlaats(state.club['Postadres']||'') || null,
+      begroot_eur: parseMoney($('#f-begroot').value) || null,
+      financiering_type: $('#f-fin-type').value || null,
+      financiering_pct: parsePct($('#f-fin-pct').value) || null,
+      financiering_eur: parseMoney($('#f-fin-eur').value) || null,
+      eigen_pct: parsePct($('#f-eigen-pct').value) || null,
+      eigen_eur: parseMoney($('#f-eigen-eur').value) || null,
+      stage: $('#f-stage-new').value || null,
+      laatste_update: $('#f-last').value || null
+    };
+    const { error } = await supabase.from('trajecten').insert(payload);
+    if (error){ console.error(error); alert('Opslaan mislukt. Controleer of de tabel en policies bestaan.'); return; }
+    closeModal();
+    await init();
+  }
+
+  function extractPlaats(postadres=''){
+    if (!postadres) return '';
+    const m = postadres.match(/\b\d{4}\s?[A-Z]{2}\s+(.+)/i);
+    if (m) return m[1].trim();
+    const parts = postadres.split(/[;\n,]/).map(s=>s.trim()).filter(Boolean);
+    return parts.length ? parts[parts.length-1] : '';
+  }
+
+  function exportCsv(){
+    const rows = state.list;
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]);
+    const esc = (v)=> '"' + String(v ?? '').replace(/"/g,'""') + '"';
+    const csv = [headers.join(',')].concat(rows.map(r => headers.map(h => esc(r[h])).join(','))).join('\n');
+    const blob = new Blob([csv], { type:'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'trajecten.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function debounce(fn, ms){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), ms); }; }
+
+  function injectStyles(){
+    const css = `
+      .modal{position:fixed; inset:auto 20px 20px 20px; top:20px; max-width:980px; margin:0 auto; background:#fff; border-radius:16px; box-shadow:0 10px 40px rgba(20,28,58,.22); display:none; flex-direction:column; max-height:calc(100vh - 40px);}
+      .modal.open{display:flex;}
+      .modal-head, .modal-foot{padding:12px 16px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #eef0f6;}
+      .modal-foot{border-top:1px solid #eef0f6; border-bottom:none;}
+      .modal-body{padding:16px; overflow:auto;}
+      .overlay{position:fixed; inset:0; background:rgba(23,31,55,.4); opacity:0; pointer-events:none; transition:.2s;}
+      .overlay.show{opacity:1; pointer-events:all;}
+      .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+      .field{display:flex; flex-direction:column;}
+      .field.span-2{grid-column:1 / -1;}
+      .club-picker{position:relative;}
+      .club-dd{position:absolute; z-index:20; left:0; right:0; top:100%; background:#fff; border:1px solid #e7eaf3; border-radius:12px; box-shadow:0 8px 30px rgba(20,28,58,.12); overflow:hidden; max-height:240px; overflow:auto;}
+      .dd-item{display:block; width:100%; text-align:left; padding:10px 12px; border-bottom:1px solid #f2f4f9;}
+      .dd-item:hover{background:#f6fbfb;}
+      .dd-title{font-weight:700;}
+      .dd-sub{font-size:.9rem; color:#6b7280;}
+      .icon-btn{background:#f2f4f9; border:none; padding:8px 10px; border-radius:10px; cursor:pointer;}
+      .btn-secondary{background:#eef2f8; border:none; padding:10px 14px; border-radius:12px; font-weight:700; cursor:pointer;}
+    `;
+    const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
+  }
+}

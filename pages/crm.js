@@ -1,7 +1,6 @@
 import { supabase } from '../supabaseClient.js';
 
 export default async function mount(app){
-  window.openTrajectFromCRM = (id)=>{ try{ sessionStorage.setItem('openTrajectId', id); if (typeof loadPage==='function'){ loadPage('trajecten'); } else { window.location.hash='#trajecten'; } }catch(e){ console.error(e);} };
   app.innerHTML = `
     <div class="filter-bar">
       <input id="q" class="filter-input" placeholder="🔍 Zoek op naam…">
@@ -25,7 +24,7 @@ export default async function mount(app){
         <h3 id="drawer-title">Details</h3>
         <button id="drawer-close" class="icon-btn" aria-label="Sluiten">✖</button>
       </div>
-      <div class="body"><div id="kv" class="kv"></div><hr style="margin:12px 0;border:0;border-top:1px solid #eef0f6;"><div id="rel-trajecten"></div></div>
+      <div class="body"><div id="kv" class="kv"></div></div>
     </aside>
   `;
 
@@ -226,37 +225,13 @@ export default async function mount(app){
     });
   }
 
-  async function openDrawer(row){
+  function openDrawer(row){
     if (!row) return;
     const drawer = document.getElementById('drawer');
     const overlay = document.getElementById('overlay');
     document.getElementById('drawer-title').textContent = row['Naam'] || 'Details';
     const entries = Object.entries(row);
     document.getElementById('kv').innerHTML = entries.map(([k,v]) => `<div><strong>${k}</strong></div><div>${v ?? ''}</div>`).join('');
-    // Fetch trajecten for this club
-    try {
-      const clubNr = row['Nr.'];
-      const { data: tj, error: tjErr } = await supabase
-        .from('trajecten')
-        .select('id,titel,type,status,laatste_update,begroot_eur,financiering_eur,eigen_eur')
-        .eq('club_nr', String(clubNr))
-        .order('created_at', { ascending:false })
-        .limit(20);
-      const wrap = document.getElementById('rel-trajecten');
-      if (tjErr) { console.error(tjErr); wrap.innerHTML = `<div class="mute...">Kon trajecten niet laden</div>`; }
-      else if (!tj || !tj.length) { wrap.innerHTML = `<div class="mute...">Geen trajecten voor deze club</div>`; }
-      else {
-        wrap.innerHTML = `<h4 style="margin:6px 0 8px">Trajecten</h4>` + tj.map(r=>
-          `<div class="chip-row">`
-          + `<span class="chip">${r.type||'-'}</span>`
-          + `<span class="chip">${r.status||'-'}</span>`
-          + `<span class="chip">${(r.laatste_update||'').toString().slice(0,10)}</span>`
-          + `<span class="chip">€ ${Number(r.begroot_eur||0).toLocaleString('nl-NL',{minimumFractionDigits:2})}</span>`
-          + `</div>`
-        ).join('');
-      }
-    } catch (e) { console.error(e); }
-
     drawer.classList.add('open');
     drawer.setAttribute('aria-hidden', 'false');
     overlay.classList.add('show');
