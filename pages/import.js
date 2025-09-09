@@ -1,21 +1,13 @@
 
-// CSV Importer (scoped UI) – v1
-// - Upload CSV
-// - Detect delimiter (, ; or tab), parse (supports quoted fields)
-// - Preview first rows
-// - Map columns
-// - Upsert in batches using Supabase (onConflict = match key, default 'id')
-// - No async/await, no optional chaining (browser-friendly)
+// pages/import.js – CSV Importer (scoped UI) – v1
 import { supabase } from '../supabaseClient.js';
 
 (function(){
-  // ---------- small helpers ----------
   function $(sel, root){ return (root||document).querySelector(sel); }
   function on(el, ev, fn){ if (el) el.addEventListener(ev, fn); }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(m){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);}); }
   function chunk(arr, size){ var out=[], i=0; for(i=0;i<arr.length;i+=size){ out.push(arr.slice(i,i+size)); } return out; }
 
-  // ---------- scoped styles ----------
   var CSS = [
     '.sf-import .panel{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.06);padding:14px;margin-bottom:12px}',
     '.sf-import .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}',
@@ -40,7 +32,6 @@ import { supabase } from '../supabaseClient.js';
     var s=document.createElement('style'); s.id='importer-scope'; s.textContent=CSS; document.head.appendChild(s);
   }
 
-  // ---------- CSV parsing ----------
   function detectDelimiter(sample){
     var counts = { ',':0, ';':0, '\t':0 };
     var i=0, ch='', inQ=false;
@@ -56,7 +47,6 @@ import { supabase } from '../supabaseClient.js';
   }
 
   function parseCSV(text){
-    // Returns { headers:[], rows:[{...}, ...] }
     var delim = detectDelimiter(text.slice(0, 10000));
     var rows = [];
     var i=0, ch='', cell='', row=[], inQ=false;
@@ -78,10 +68,7 @@ import { supabase } from '../supabaseClient.js';
       }
     }
     if (cell.length>0 || row.length>0){ pushCell(); pushRow(); }
-
-    if (rows.length>0 && rows[rows.length-1].every(function(x){ return String(x||'').trim()===''; })){
-      rows.pop();
-    }
+    if (rows.length>0 && rows[rows.length-1].every(function(x){ return String(x||'').trim()===''; })){ rows.pop(); }
     if (rows.length===0) return { headers:[], rows:[] };
 
     var headers = rows.shift().map(function(h){ return String(h||'').trim(); });
@@ -93,7 +80,6 @@ import { supabase } from '../supabaseClient.js';
     return { headers: headers, rows: objects, delimiter: delim };
   }
 
-  // ---------- UI ----------
   function view(){
     return (
       '<div class="sf-import">'+
@@ -107,7 +93,6 @@ import { supabase } from '../supabaseClient.js';
           '</div>'+
           '<p class="muted" style="margin:8px 0 0">CSV met headerregel. Delimiter wordt automatisch gedetecteerd (komma/semicolon/tab).</p>'+
         '</div>'+
-
         '<div id="preview" class="panel" style="display:none"></div>'+
         '<div id="mapping" class="panel" style="display:none"></div>'+
         '<div id="run" class="panel" style="display:none"></div>'+
@@ -192,30 +177,27 @@ import { supabase } from '../supabaseClient.js';
     return { missingKey: missingKey, dupes: dupes };
   }
 
-  function chunk(arr, size){ var out=[], i=0; for(i=0;i<arr.length;i+=size){ out.push(arr.slice(i,i+size)); } return out; }
   function upsertBatch(table, payload, key, onProgress){
-    var chunks = chunk(payload, 500);
+    var parts = chunk(payload, 500);
     var done = 0, failed = 0, all = payload.length;
-    function handle(idx){
-      if (idx >= chunks.length) return Promise.resolve({ done: done, failed: failed });
-      var part = chunks[idx];
+    function step(i){
+      if (i >= parts.length) return Promise.resolve({ done: done, failed: failed });
+      var part = parts[i];
       return supabase.from(table).upsert(part, { onConflict: key })
         .then(function(res){
-          if (res && res.error){ failed += part.length; }
-          else { done += part.length; }
+          if (res && res.error){ failed += part.length; } else { done += part.length; }
           if (onProgress) onProgress(Math.round(100*(done+failed)/all));
-          return handle(idx+1);
+          return step(i+1);
         })
         .catch(function(){
           failed += part.length;
           if (onProgress) onProgress(Math.round(100*(done+failed)/all));
-          return handle(idx+1);
+          return step(i+1);
         });
     }
-    return handle(0);
+    return step(0);
   }
 
-  // ---------- mount ----------
   function mount(root){
     injectStylesOnce();
     root.innerHTML = view();
@@ -233,12 +215,85 @@ import { supabase } from '../supabaseClient.js';
       reader.onload = function(ev){
         try{
           var text = ev.target.result;
-          state.csv = parseCSV(text);
-          renderPreview(root, state.csv);
+          state.csv = (function parseCSV(text){
+            var delim = (function detectDelimiter(sample){
+              var counts = { ',':0, ';':0, '\\t':0 };
+              var i=0, ch='', inQ=false;
+              for(i=0;i<sample.length;i++){
+                ch=sample[i];
+                if(ch === '\"'){ inQ = !inQ; continue; }
+                if(!inQ && (ch===','||ch===';'||ch==='\\t')) counts[ch]++;
+              }
+              var best = ',', max = counts[','];
+              if (counts[';'] > max){ best=';'; max=counts[';']; }
+              if (counts['\\t'] > max){ best='\\t'; max=counts['\\t']; }
+              return best;
+            })(text.slice(0, 10000));
+            var rows = []; var i=0, ch='', cell='', row=[], inQ=false;
+            function pushCell(){ row.push(cell); cell=''; }
+            function pushRow(){ rows.push(row); row=[]; }
+            for(i=0;i<text.length;i++){
+              ch = text[i];
+              if (ch === '\"'){
+                if (inQ && text[i+1] === '\"'){ cell += '\"'; i++; }
+                else { inQ = !inQ; }
+              } else if (!inQ && (ch === '\\n' || ch === '\\r')){
+                if (ch === '\\r' && text[i+1] === '\\n') i++;
+                pushCell(); pushRow();
+              } else if (!inQ && ch === delim){
+                pushCell();
+              } else {
+                cell += ch;
+              }
+            }
+            if (cell.length>0 || row.length>0){ pushCell(); pushRow(); }
+            if (rows.length>0 && rows[rows.length-1].every(function(x){ return String(x||'').trim()===''; })){ rows.pop(); }
+            if (rows.length===0) return { headers:[], rows:[], delimiter:delim };
+            var headers = rows.shift().map(function(h){ return String(h||'').trim(); });
+            var objects = rows.map(function(r){
+              var o={}, j=0;
+              for(j=0;j<headers.length;j++){ o[headers[j] || ('col'+j)] = r[j]; }
+              return o;
+            });
+            return { headers: headers, rows: objects, delimiter: delim };
+          })(text);
+          (function renderPreview(root, csv){
+            var el = document.querySelector('#preview');
+            var rows = csv.rows.slice(0, 10);
+            var head = '<tr>'+ csv.headers.map(function(h){ return '<th>'+escapeHtml(h)+'</th>'; }).join('') +'</tr>';
+            var body = rows.map(function(r){
+              return '<tr>'+ csv.headers.map(function(h){ return '<td>'+escapeHtml(r[h]||'')+'</td>'; }).join('') +'</tr>';
+            }).join('');
+            el.innerHTML = '<h4 style="margin:0 0 6px">Voorbeeld</h4>' +
+              '<div class="muted" style="margin-bottom:8px">Detecteerde delimiter: <span class="pill">'+ (csv.delimiter===';'?'semicolon (;)':(csv.delimiter==='\\t'?'tab (\\t)':'comma (,)' )) +'</span></div>'+
+              '<div style="overflow:auto"><table><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>';
+            el.style.display = 'block';
+          })(root, state.csv);
           getDbColumns(state.table).then(function(cols){
             state.dbCols = cols && cols.length ? cols : state.csv.headers;
-            renderMapping(root, state.table, state.key, state.csv, state.dbCols);
-            renderRun(root);
+            (function renderMapping(root, table, key, csv, dbCols){
+              var el = document.querySelector('#mapping');
+              var mapItems = dbCols.map(function(c){
+                return '<div class="row"><label style="min-width:200px">'+escapeHtml(c)+'</label><select class="input map" data-col="'+escapeHtml(c)+'"><option value="">-- kies uit CSV --</option>'+
+                        csv.headers.map(function(h){ return '<option'+(h===c?' selected':'')+'>'+escapeHtml(h)+'</option>'; }).join('')+
+                       '</select></div>';
+              }).join('');
+              el.innerHTML = '<h4 style="margin:0 0 6px">Koppeling</h4>' +
+                '<div class="muted" style="margin-bottom:8px">Tabel: <strong>'+escapeHtml(table)+'</strong> • Match kolom: <strong>'+escapeHtml(key)+'</strong></div>' +
+                '<div class="map-grid">'+ mapItems +'</div>'+
+                '<div style="margin-top:10px" class="row">'+
+                  '<button id="btn-dry" class="btn">Controle (dry-run)</button>'+
+                  '<button id="btn-run" class="btn primary">Upsert uitvoeren</button>'+
+                '</div>';
+              el.style.display = 'block';
+            })(root, state.table, state.key, state.csv, state.dbCols);
+            (function renderRun(root){
+              var el = document.querySelector('#run');
+              el.innerHTML = '<h4 style="margin:0 0 6px">Uitvoering</h4>' +
+                '<div class="progress"><div class="bar" id="bar"></div></div>'+
+                '<p id="log" class="muted" style="margin:8px 0 0">Nog niet gestart.</p>';
+              el.style.display = 'block';
+            })(root);
           });
         } catch(e){
           console.error(e);
@@ -265,6 +320,29 @@ import { supabase } from '../supabaseClient.js';
         return;
       }
 
+      function pickMappedRecords(csv, mapping){
+        var out = []; var i=0, r, obj, k, val;
+        for(i=0;i<csv.rows.length;i++){
+          r = csv.rows[i]; obj = {};
+          for (k in mapping){
+            if (!mapping[k]) continue;
+            val = r[mapping[k]];
+            if (val==='' || typeof val==='undefined') val = null;
+            obj[k] = val;
+          }
+          out.push(obj);
+        }
+        return out;
+      }
+      function validate(records, key){
+        var missingKey = []; var i=0, seen={}, dupes=[];
+        for(i=0;i<records.length;i++){
+          var id = records[i][key];
+          if (!id){ missingKey.push(i+2); continue; }
+          if (seen[id]) dupes.push(id); else seen[id]=1;
+        }
+        return { missingKey: missingKey, dupes: dupes };
+      }
       var records = pickMappedRecords(state.csv, mapping);
       var check = validate(records, state.key);
       var log = $('#log', root), bar = $('#bar', root);
@@ -281,9 +359,30 @@ import { supabase } from '../supabaseClient.js';
         if (!confirm('Er ontbreken '+check.missingKey.length+' waardes voor "'+state.key+'". Toch doorgaan?')) return;
       }
 
+      function upsertBatch(table, payload, key, onProgress){
+        var parts = (function(arr, size){ var out=[], i=0; for(i=0;i<arr.length;i+=size){ out.push(arr.slice(i,i+size)); } return out; })(payload, 500);
+        var done = 0, failed = 0, all = payload.length;
+        function step(i){
+          if (i >= parts.length) return Promise.resolve({ done: done, failed: failed });
+          var part = parts[i];
+          return supabase.from(table).upsert(part, { onConflict: key })
+            .then(function(res){
+              if (res && res.error){ failed += part.length; } else { done += part.length; }
+              if (onProgress) onProgress(Math.round(100*(done+failed)/all));
+              return step(i+1);
+            })
+            .catch(function(){
+              failed += part.length;
+              if (onProgress) onProgress(Math.round(100*(done+failed)/all));
+              return step(i+1);
+            });
+        }
+        return step(0);
+      }
+
       $('#run', root).scrollIntoView({ behavior:'smooth', block:'start' });
       log.textContent = 'Bezig met upsert…';
-      upsertBatch(state.table, records, state.key, function(pct){
+      upsertBatch($('#table',root).value.trim(), records, state.key, function(pct){
         bar.style.width = pct + '%';
       }).then(function(res){
         bar.style.width = '100%';
@@ -292,7 +391,6 @@ import { supabase } from '../supabaseClient.js';
     });
   }
 
-  // ---------- export default ----------
   export default function(app){
     mount(app);
   }
