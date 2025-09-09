@@ -1,4 +1,5 @@
-const VER = '20';
+// v21 robust loader (no async/await), catches runtime errors too
+const VER = '21';
 const app = document.getElementById('app');
 const nav = document.getElementById('nav');
 const statusEl = document.getElementById('sb-status');
@@ -10,7 +11,6 @@ nav.addEventListener('click', function (e) {
   for (var i=0;i<links.length;i++){ links[i].classList.toggle('active', links[i]===link); }
   loadPage(link.dataset.page);
 });
-
 document.getElementById('btn-refresh').addEventListener('click', function () {
   var activeEl = nav.querySelector('a.active');
   var active = activeEl ? activeEl.dataset.page : 'crm';
@@ -18,8 +18,8 @@ document.getElementById('btn-refresh').addEventListener('click', function () {
 });
 
 function importFallback(page){
-  const base = `./pages/${page}.js`;
-  const urls = [`${base}?v=${VER}`, `${base}?cb=${Date.now()}`, base];
+  const base = './pages/' + page + '.js';
+  const urls = [base + '?v=' + VER, base + '?cb=' + Date.now(), base];
   let last = null;
   function next(i){
     if (i >= urls.length) return Promise.reject(last || new Error('All imports failed'));
@@ -29,10 +29,9 @@ function importFallback(page){
   }
   return next(0);
 }
-
 function preflight(page){
-  const url = `./pages/${page}.js?chk=${VER}`;
-  return fetch(url, { cache: 'no-store' }).then(res => {
+  const url = './pages/' + page + '.js?chk=' + VER;
+  return fetch(url, { cache: 'no-store' }).then(function(res){
     console.log('[loader] preflight', url, res.status);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return true;
@@ -42,27 +41,28 @@ function preflight(page){
 function loadPage(page){
   app.innerHTML = '<div class="panel"><p><strong>' + page + '</strong> wordt geladen…</p></div>';
   preflight(page)
-    .catch((e)=>{ console.warn('[loader] preflight failed:', e && e.message ? e.message : e); /* alsnog importen om syntaxfout te tonen */ })
-    .then(()=> importFallback(page))
-    .then((module) => {
+    .catch(function(e){ console.warn('[loader] preflight failed:', e && e.message ? e.message : e); })
+    .then(function(){ return importFallback(page); })
+    .then(function(module){
       console.log('[loader] imported ok:', page, module);
-      if (module && typeof module.default === 'function'){
+      if (!module || typeof module.default !== 'function') throw new Error('Geen default export');
+      try {
         const res = module.default(app);
-        return (res && typeof res.then === 'function') ? res : Promise.resolve();
-      } else {
-        throw new Error('Module ' + page + ' heeft geen default export');
+        if (res && typeof res.then === 'function'){ return res; }
+        return Promise.resolve();
+      } catch (e){
+        console.error('[loader] runtime error in', page, e);
+        app.innerHTML = '<div class="alert err">Module <strong>' + page + '</strong> gaf een runtime-fout.<br><small>Zie console voor details.</small></div>';
       }
     })
-    .catch((err) => {
+    .catch(function(err){
       console.error('Module load error:', err);
-      const tried = 'trajecten.js?v=' + VER;
-      app.innerHTML = '<div class="alert err">Module <strong>' + page + '</strong> niet gevonden of met fout geladen.<br><small>Probeerde: ' + tried + '</small></div>';
+      app.innerHTML = '<div class="alert err">Module <strong>' + page + '</strong> niet gevonden of met fout geladen.<br><small>Probeerde: ' + page + '.js?v=' + VER + '</small></div>';
     });
 }
 
 // Supabase status indicator
 import { supabase } from './supabaseClient.js';
-
 function checkSupabase(){
   return supabase
     .from('clubs')
@@ -79,6 +79,5 @@ function checkSupabase(){
       console.error('Supabase check failed:', e);
     });
 }
-
 checkSupabase();
 loadPage('crm');
