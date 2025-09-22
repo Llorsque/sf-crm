@@ -179,7 +179,7 @@ export default async function mount(app){
       return okQ && okS && okG;
     });
     $('#list').innerHTML = rows.map(r => `
-      <article class="card traj-card" data-id="${r.id}">
+      <article class="card">
         <h3>${r.titel || (r.type || 'Traject')}</h3>
         <div class="meta">🏟️ ${r.club_naam} <span class="muted">(#${r.club_nr})</span></div>
         <div class="meta">📅 ${r.start_datum || '—'} → ${r.eind_datum || '—'}</div>
@@ -366,72 +366,3 @@ function parseDateNL(val){
     const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
   }
 }
-
-
-
-  // Delegated click handler for opening detail modal
-  if (!window.__traj_click_bound){
-    window.__traj_click_bound = true;
-    document.addEventListener('click', function(ev){
-      const list = document.getElementById('list');
-      if (!list) return;
-      const card = ev.target.closest('article.traj-card');
-      if (!card || !list.contains(card)) return;
-      if (ev.target.closest('button, a, input, select, textarea')) return;
-      const id = card.getAttribute('data-id');
-      const item = (state.list||[]).find(r => String(r.id) === String(id));
-      if (item) openDetailModal(item);
-    });
-  }
-
-  // Detail modal helpers (read-only)
-  function ensureDetailModal(){
-    if (document.getElementById('detail-modal')) return;
-    const wrap = document.createElement('div');
-    wrap.innerHTML = `
-      <div class="modal" id="detail-modal" role="dialog" aria-modal="true" aria-label="Traject details">
-        <div class="modal-head">
-          <h3 id="detail-title">Traject</h3>
-          <button id="detail-close" class="icon-btn" aria-label="Sluiten">✖</button>
-        </div>
-        <div class="modal-body" id="detail-body"></div>
-        <div class="modal-foot">
-          <button id="detail-close2" class="btn">Sluiten</button>
-        </div>
-      </div>`;
-    document.body.appendChild(wrap.firstElementChild);
-  }
-
-  function openDetailModal(item){
-    ensureDetailModal();
-    const m = document.getElementById('detail-modal');
-    const body = document.getElementById('detail-body');
-    const title = document.getElementById('detail-title');
-    title.textContent = item.titel || item.type || ('Traject #' + (item.id ?? ''));
-
-    const money = (v)=> (v==null ? '—' : Number(v).toLocaleString('nl-NL',{style:'currency',currency:'EUR'}));
-    const fmt = (v)=> (v==null||v==='' ? '—' : v);
-
-    body.innerHTML = `
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
-        <div><div class="muted">Vereniging</div><div><strong>${fmt(item.club_naam)}</strong> <span class="muted">(#${fmt(item.club_nr)})</span></div></div>
-        <div><div class="muted">Plaats</div><div>${fmt(item.plaats)}</div></div>
-        <div><div class="muted">Type</div><div>${fmt(item.type)}</div></div>
-        <div><div class="muted">Status</div><div>${fmt(item.status)}</div></div>
-        <div><div class="muted">Start</div><div>${fmt(item.start_datum)}</div></div>
-        <div><div class="muted">Einde</div><div>${fmt(item.eind_datum)}</div></div>
-        <div><div class="muted">Clubondersteuner</div><div>${fmt(item.eigenaar)}</div></div>
-        <div><div class="muted">Trajectbegeleider</div><div>${fmt(item.begeleider)}</div></div>
-        <div><div class="muted">Begroot</div><div>${money(item.begroot_eur)}</div></div>
-        <div><div class="muted">Financiering</div><div>${fmt(item.financiering_type)} ${item.financiering_pct?('('+item.financiering_pct+'%)'):''} ${item.financiering_eur?('· '+money(item.financiering_eur)):''}</div></div>
-        <div><div class="muted">Eigen bijdrage</div><div>${item.eigen_pct?item.eigen_pct+'%':''} ${item.eigen_eur?('· '+money(item.eigen_eur)):''}</div></div>
-        <div><div class="muted">Laatste update</div><div>${fmt(item.laatste_update)}</div></div>
-        <div style="grid-column:1 / -1"><div class="muted">Notities</div><div>${fmt(item.notities)}</div></div>
-      </div>`;
-
-    m.classList.add('open');
-    const close = ()=> m.classList.remove('open');
-    document.getElementById('detail-close').onclick = close;
-    document.getElementById('detail-close2').onclick = close;
-  }
-
