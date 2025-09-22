@@ -170,6 +170,7 @@ export default async function mount(app){
 
   function renderList(){
 
+
     const q = ($('#q')?.value||'').toLowerCase();
     const st = $('#f-status')?.value||'';
     const sg = $('#f-stage')?.value||'';
@@ -252,7 +253,78 @@ function parseDateNL(val){
   const m2 = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m2) return v; // already ISO
   return null;
+    // Render KPI tiles based on current filtered rows
+    try{ renderTiles(rows); }catch(e){ console.info('[traj] tiles render skipped', e); }
+
 }
+
+  function euro(v){ if (v==null || isNaN(v)) return '—'; try{ return Number(v).toLocaleString('nl-NL',{style:'currency',currency:'EUR', maximumFractionDigits:0}); }catch(e){ return '€ '+v; } }
+  function num(v){ if (v==null || isNaN(v)) return '—'; return Number(v).toLocaleString('nl-NL'); }
+  function sum(arr, sel){ let t=0; for (const x of arr){ const v = sel(x); if (!isNaN(v) && v!=null) t += Number(v); } return t; }
+  function countWhere(arr, pred){ let c=0; for (const x of arr) if (pred(x)) c++; return c; }
+
+  function renderTiles(rows){
+    const el = document.getElementById('traj-tiles');
+    if (!el) return;
+    const list = Array.isArray(rows) ? rows : (state.list || []);
+
+    const total = list.length;
+    const totalBudget = sum(list, x => x.begroot_eur || 0);
+    const avgBudget = total ? (totalBudget / total) : 0;
+
+    const cIntake = countWhere(list, x => (x.status||'').toLowerCase()==='intake');
+    const cUitv = countWhere(list, x => (x.status||'').toLowerCase()==='uitvoering');
+    const cAfgr = countWhere(list, x => (x.status||'').toLowerCase()==='afgerond');
+
+    const byType = {};
+    for (const x of list){ if (x.type){ byType[x.type] = (byType[x.type]||0)+1; } }
+    const topTypes = Object.entries(byType).sort((a,b)=>b[1]-a[1]).slice(0,2);
+    const t1 = topTypes[0] || ['—', 0];
+    const t2 = topTypes[1] || ['—', 0];
+
+    const today = new Date();
+    const yStart = new Date(today.getFullYear(), 0, 1);
+    const in90 = new Date(today.getFullYear(), today.getMonth(), today.getDate()+90);
+    const startedThisYear = countWhere(list, x => x.start_datum && new Date(x.start_datum) >= yStart);
+    const endingSoon = countWhere(list, x => x.eind_datum && new Date(x.eind_datum) <= in90 && new Date(x.eind_datum) >= today);
+
+    el.innerHTML = `
+      <div class="tile">
+        <div class="sub">Totaal trajecten</div>
+        <div class="kpi">${num(total)}</div>
+      </div>
+      <div class="tile">
+        <div class="sub">Totaal begroot</div>
+        <div class="kpi">${euro(totalBudget)}</div>
+      </div>
+      <div class="tile">
+        <div class="sub">Gem. begroting</div>
+        <div class="kpi">${euro(avgBudget)}</div>
+      </div>
+      <div class="tile">
+        <div class="sub">Intake</div>
+        <div class="kpi">${num(cIntake)}</div>
+      </div>
+      <div class="tile">
+        <div class="sub">Uitvoering</div>
+        <div class="kpi">${num(cUitv)}</div>
+      </div>
+      <div class="tile">
+        <div class="sub">Afgerond</div>
+        <div class="kpi">${num(cAfgr)}</div>
+      </div>
+      <div class="tile">
+        <div class="sub">Top soort</div>
+        <div class="kpi">${t1[0]} · ${num(t1[1])}</div>
+      </div>
+      <div class="tile">
+        <div class="sub">Gestart dit jaar</div>
+        <div class="kpi">${num(startedThisYear)}</div>
+      </div>
+    `;
+  }
+
+
 
   // Delegated click to open edit modal from tiles
   app.addEventListener('click', function(ev){
