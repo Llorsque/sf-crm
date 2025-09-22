@@ -169,6 +169,7 @@ export default async function mount(app){
   }
 
   function renderList(){
+
     const q = ($('#q')?.value||'').toLowerCase();
     const st = $('#f-status')?.value||'';
     const sg = $('#f-stage')?.value||'';
@@ -179,7 +180,8 @@ export default async function mount(app){
       return okQ && okS && okG;
     });
     $('#list').innerHTML = rows.map(r => `
-      <article class="card">
+      <article class="card traj-card" data-id="${r.id}">
+      
         <h3>${r.titel || (r.type || 'Traject')}</h3>
         <div class="meta">🏟️ ${r.club_naam} <span class="muted">(#${r.club_nr})</span></div>
         <div class="meta">📅 ${r.start_datum || '—'} → ${r.eind_datum || '—'}</div>
@@ -251,6 +253,17 @@ function parseDateNL(val){
   const m2 = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m2) return v; // already ISO
   return null;
+    // attach click handlers to cards
+    const listRoot = $('#list');
+    listRoot.querySelectorAll('.traj-card').forEach(card=>{
+      card.addEventListener('click', (ev)=>{
+        if (ev.target.closest('button, a, input, select, textarea')) return;
+        const id = card.getAttribute('data-id');
+        const item = rows.find(r => String(r.id) === String(id));
+        if (item) openTrajectModal(item);
+      });
+    });
+
 }
   function calcCoverage(){
   const begroot = parseMoney($('#f-begroot').value);
@@ -366,3 +379,200 @@ function parseDateNL(val){
     const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
   }
 }
+
+
+// === Traject detail modal (view/edit) ===
+function ensureTrajModal(){
+  if (document.getElementById('traj-detail-modal')) return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div class="modal" id="traj-detail-modal" role="dialog" aria-modal="true" aria-label="Traject details">
+      <div class="modal-head">
+        <h3 id="traj-title">Traject</h3>
+        <div style="display:flex; gap:8px">
+          <button id="traj-edit" class="btn">Bewerken</button>
+          <button id="traj-close" class="icon-btn" aria-label="Sluiten">✖</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field span-2">
+            <div class="muted">Vereniging</div>
+            <div><strong id="d-club"></strong> <span class="muted" id="d-clubnr"></span></div>
+            <div class="muted" id="d-plaats"></div>
+          </div>
+          <div class="field">
+            <label>Type traject</label>
+            <select id="d-type" class="filter-input">
+              <option>ClubKaderCoach</option>
+              <option>Rabo Clubsupport</option>
+              <option>OldStars</option>
+              <option>Sportakkoord Traject</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select id="d-status" class="filter-input">
+              <option>Intake</option>
+              <option>Uitvoering</option>
+              <option>Evaluatie</option>
+              <option>Afgerond</option>
+              <option>Geannuleerd</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Start traject</label>
+            <input type="date" id="d-start" class="filter-input"/>
+          </div>
+          <div class="field">
+            <label>Verwacht einde</label>
+            <input type="date" id="d-eind" class="filter-input"/>
+          </div>
+          <div class="field">
+            <label>Clubondersteuner</label>
+            <select id="d-eigenaar" class="filter-input">
+              <option></option>
+              <option>Aimee</option>
+              <option>Geerte</option>
+              <option>Jair</option>
+              <option>Justin</option>
+              <option>Sybren</option>
+              <option>Tjardo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Trajectbegeleider</label>
+            <input id="d-begeleider" class="filter-input" placeholder="Naam"/>
+          </div>
+          <div class="field">
+            <label>Begroot €</label>
+            <input id="d-begroot" class="filter-input" inputmode="decimal" />
+          </div>
+          <div class="field">
+            <label>Financiering</label>
+            <select id="d-fin-type" class="filter-input">
+              <option></option>
+              <option>Subsidieregeling</option>
+              <option>Eigen middelen</option>
+              <option>Sponsor</option>
+              <option>Overig</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Financiering %</label>
+            <input id="d-fin-pct" class="filter-input" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label>Financiering €</label>
+            <input id="d-fin-eur" class="filter-input" inputmode="decimal" />
+          </div>
+          <div class="field">
+            <label>Eigen bijdrage %</label>
+            <input id="d-eigen-pct" class="filter-input" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label>Eigen bijdrage €</label>
+            <input id="d-eigen-eur" class="filter-input" inputmode="decimal" />
+          </div>
+          <div class="field">
+            <label>Laatste update</label>
+            <input type="date" id="d-last" class="filter-input"/>
+          </div>
+          <div class="field span-2">
+            <label>Notities</label>
+            <textarea id="d-note" class="filter-input" rows="5"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button id="traj-cancel" class="btn-secondary">Annuleren</button>
+        <button id="traj-save" class="btn-accent">Opslaan</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap.firstElementChild);
+}
+
+function setTrajModalEditable(enabled){
+  const m = document.getElementById('traj-detail-modal');
+  m.querySelectorAll('input, select, textarea').forEach(el=> el.disabled = !enabled);
+  document.getElementById('traj-save').style.display = enabled ? '' : 'none';
+  document.getElementById('traj-cancel').style.display = enabled ? '' : 'none';
+  document.getElementById('traj-edit').style.display = enabled ? 'none' : '';
+}
+
+function moneyFmt(v){ return v==null ? '' : Number(v).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function parseMoney(val){ if (!val) return 0; return parseFloat(String(val).replace(/[€\s\.]/g,'').replace(',', '.')) || 0; }
+function parsePct(val){ return parseFloat(String(val).replace(',', '.')) || 0; }
+
+function fillTrajForm(item){
+  document.getElementById('traj-title').textContent = item.titel || item.type || ('Traject #' + (item.id ?? ''));
+  document.getElementById('d-club').textContent = item.club_naam || '';
+  document.getElementById('d-clubnr').textContent = item.club_nr ? '(#' + item.club_nr + ')' : '';
+  document.getElementById('d-plaats').textContent = item.plaats || '';
+
+  const set = (id, val)=> { const el = document.getElementById(id); if (el){ 
+    if (el.tagName==='SELECT'){ 
+      const exists = [...el.options].some(o => o.value === String(val));
+      if (val!=null && !exists){ const o = document.createElement('option'); o.value = String(val); o.textContent = String(val); el.appendChild(o); }
+    }
+    el.value = (val ?? ''); 
+  }};  
+  set('d-type', item.type || '');
+  set('d-status', item.status || 'Intake');
+  set('d-start', item.start_datum || '');
+  set('d-eind', item.eind_datum || '');
+  set('d-eigenaar', item.eigenaar || '');
+  set('d-begeleider', item.begeleider || '');
+  set('d-begroot', moneyFmt(item.begroot_eur));
+  set('d-fin-type', item.financiering_type || '');
+  set('d-fin-pct', item.financiering_pct ?? '');
+  set('d-fin-eur', moneyFmt(item.financiering_eur));
+  set('d-eigen-pct', item.eigen_pct ?? '');
+  set('d-eigen-eur', moneyFmt(item.eigen_eur));
+  set('d-last', item.laatste_update || '');
+  set('d-note', item.notities || '');
+}
+
+function openTrajectModal(item){
+  ensureTrajModal();
+  const m = document.getElementById('traj-detail-modal');
+  fillTrajForm(item);
+  setTrajModalEditable(false);
+  m.classList.add('open');
+
+  const close = ()=> m.classList.remove('open');
+  document.getElementById('traj-close').onclick = close;
+  document.getElementById('traj-cancel').onclick = ()=>{ fillTrajForm(item); setTrajModalEditable(false); };
+  document.getElementById('traj-edit').onclick = ()=> setTrajModalEditable(true);
+
+  document.getElementById('traj-save').onclick = async ()=>{
+    const payload = {
+      titel: document.getElementById('d-type')?.value || 'Traject',
+      type: document.getElementById('d-type')?.value || null,
+      status: document.getElementById('d-status')?.value || 'Intake',
+      start_datum: document.getElementById('d-start')?.value || null,
+      eind_datum: document.getElementById('d-eind')?.value || null,
+      eigenaar: document.getElementById('d-eigenaar')?.value || null,
+      begeleider: document.getElementById('d-begeleider')?.value || null,
+      notities: document.getElementById('d-note')?.value || null,
+      begroot_eur: parseMoney(document.getElementById('d-begroot')?.value) || null,
+      financiering_type: document.getElementById('d-fin-type')?.value || null,
+      financiering_pct: parsePct(document.getElementById('d-fin-pct')?.value) || null,
+      financiering_eur: parseMoney(document.getElementById('d-fin-eur')?.value) || null,
+      eigen_pct: parsePct(document.getElementById('d-eigen-pct')?.value) || null,
+      eigen_eur: parseMoney(document.getElementById('d-eigen-eur')?.value) || null,
+      laatste_update: document.getElementById('d-last')?.value || null
+    };
+
+    const { error } = await supabase.from('trajecten').update(payload).eq('id', item.id);
+    if (error){ console.error('Supabase update error:', error); alert('Opslaan mislukt: ' + (error.message||error)); return; }
+
+    Object.assign(item, payload);
+    setTrajModalEditable(false);
+    if (typeof renderList === 'function') renderList();
+    if (window.sfSetStatus) window.sfSetStatus('Traject opgeslagen', 'ok');
+  };
+}
+
+// Bind cards via renderList() after innerHTML is set:
+
