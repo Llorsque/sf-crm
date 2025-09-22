@@ -389,6 +389,12 @@ function parseDateNL(val){
         eigen_eur: parseMoney($('#f-eigen-eur')?.value) || null,
         laatste_update: $('#f-last')?.value || null
       };
+      // Prune unknown columns based on existing item keys (prevents Supabase schema errors)
+      const allowed = new Set(Object.keys(item || {}));
+      for (const k of Object.keys(payload)) {
+        if (!allowed.has(k)) delete payload[k];
+      }
+
       const { error } = await supabase.from('trajecten').update(payload).eq('id', item.id);
       if (error){ console.error('Supabase update error:', error); alert('Opslaan mislukt: ' + (error.message||error)); return; }
       const idx = state.list.findIndex(r => String(r.id) === String(item.id));
