@@ -169,17 +169,25 @@ export default async function mount(app){
   }
 
   function renderList(){
+
     const q = ($('#q')?.value||'').toLowerCase();
     const st = $('#f-status')?.value||'';
     const sg = $('#f-stage')?.value||'';
+    const tp = $('#f-type')?.value||'';
+    const ow = $('#f-owner')?.value||'';
+    const bg = $('#f-begeleider')?.value||'';
     const rows = state.list.filter(r => {
+      const okT = !tp || r.type===tp;
+      const okO = !ow || r.eigenaar===ow;
+      const okB = !bg || r.begeleider===bg;
       const okQ = !q || (r.club_naam||'').toLowerCase().includes(q) || (r.titel||'').toLowerCase().includes(q);
       const okS = !st || r.status===st;
       const okG = !sg || r.stage===sg;
-      return okQ && okS && okG;
+      return okQ && okS && okG && okT && okO && okB;
     });
     $('#list').innerHTML = rows.map(r => `
-      <article class="card">
+      <article class="card traj-card" data-id="${r.id}">
+      
         <h3>${r.titel || (r.type || 'Traject')}</h3>
         <div class="meta">🏟️ ${r.club_naam} <span class="muted">(#${r.club_nr})</span></div>
         <div class="meta">📅 ${r.start_datum || '—'} → ${r.eind_datum || '—'}</div>
@@ -251,6 +259,44 @@ function parseDateNL(val){
   const m2 = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m2) return v; // already ISO
   return null;
+
+    // Build stats
+    const statsEl = document.getElementById('traj-stats');
+    if (statsEl){
+      const total = rows.length;
+      const byType = {};
+      const byOwner = {};
+      rows.forEach(r => {
+        if (r.type) byType[r.type] = (byType[r.type]||0)+1;
+        if (r.eigenaar) byOwner[r.eigenaar] = (byOwner[r.eigenaar]||0)+1;
+      });
+      const chips = (obj) => Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="badge" data-chip="${k}">${k} · ${v}</span>`).join(' ');
+      statsEl.innerHTML = `
+        <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap">
+          <div><strong>Totaal</strong>: ${total}</div>
+          <div><strong>Per type</strong>: ${chips(byType) || '<span class="muted">—</span>'}</div>
+          <div><strong>Per ondersteuner</strong>: ${chips(byOwner) || '<span class="muted">—</span>'}</div>
+        </div>`;
+      // Chip click filters by type or owner
+      statsEl.querySelectorAll('.badge').forEach(el=>{
+        el.addEventListener('click', ()=>{
+          const val = el.getAttribute('data-chip');
+          if (byType[val]) { const s=document.getElementById('f-type'); if(s){ s.value=val; } }
+          else if (byOwner[val]) { const s=document.getElementById('f-owner'); if(s){ s.value=val; } }
+          renderList();
+        });
+      });
+    }
+
+    // Click -> detail modal
+    document.querySelectorAll('.traj-card').forEach(card=>{
+      card.addEventListener('click', ()=>{
+        const id = card.getAttribute('data-id');
+        const item = rows.find(r => String(r.id) === String(id));
+        if (item) openDetailModal(item);
+      });
+    });
+
 }
   function calcCoverage(){
   const begroot = parseMoney($('#f-begroot').value);
