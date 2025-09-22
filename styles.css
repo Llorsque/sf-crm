@@ -108,3 +108,8 @@ h1{ font-size:1.4rem; margin:0 }
 
 .traj-card{ cursor:pointer; transition: box-shadow .15s ease; }
 .traj-card:hover{ box-shadow:0 6px 20px rgba(2,6,23,.08); }
+
+.btn-danger{ background:#b42318; color:#fff; border:none; padding:.55rem .8rem; border-radius:10px; cursor:pointer; }
+.btn-danger:hover{ filter:brightness(1.05); }
+.btn-accent{ background:#52E8E8; color:#0b1b2a; border:none; padding:.55rem .8rem; border-radius:10px; cursor:pointer; }
+.btn-secondary{ background:#e5e7eb; color:#111827; border:none; padding:.55rem .8rem; border-radius:10px; cursor:pointer; }

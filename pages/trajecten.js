@@ -262,7 +262,7 @@ function parseDateNL(val){
     const id = card.getAttribute('data-id');
     const item = state.list && Array.isArray(state.list) ? state.list.find(r => String(r.id) === String(id)) : null;
     if (!item){ console.warn('[traj] no item for id', id); return; }
-    if (typeof openEdit === 'function') openEdit(item);
+    if (typeof openEdit === 'function' && document.getElementById('modal')) openEdit(item); else if (typeof openEditFallback==='function') openEditFallback(item);
   });
 
 
@@ -339,6 +339,17 @@ function parseDateNL(val){
     if (!overlay || !modal){ console.error('[traj] modal missing'); return; }
     overlay.classList.add('show');
     modal.classList.add('open');
+
+    // Ensure a Delete button exists in modal footer
+    const footer = document.querySelector('#modal .modal-foot') || document.querySelector('#modal-footer') || document.querySelector('.modal-foot');
+    if (footer && !document.getElementById('modal-delete')){
+      const delBtn = document.createElement('button');
+      delBtn.id = 'modal-delete';
+      delBtn.className = 'btn btn-danger';
+      delBtn.type = 'button';
+      delBtn.textContent = 'Verwijderen';
+      footer.insertBefore(delBtn, document.getElementById('modal-save') || footer.firstChild);
+    }
     const head = $('#modal .modal-head h3'); if (head) head.textContent = 'Traject bewerken';
     if ($('#club-q')){
       $('#club-q').value = (item.club_naam||'') + (item.club_nr ? (' (#'+item.club_nr+')') : '');
@@ -389,6 +400,25 @@ function parseDateNL(val){
         eigen_eur: parseMoney($('#f-eigen-eur')?.value) || null,
         laatste_update: $('#f-last')?.value || null
       };
+    // Delete handler
+    const delBtnEl = document.getElementById('modal-delete');
+    if (delBtnEl){
+      delBtnEl.onclick = async function(){
+        const ok = confirm('Weet je zeker dat je dit traject wilt verwijderen? Dit kan niet ongedaan gemaakt worden.');
+        if (!ok) return;
+        const { error } = await supabase.from('trajecten').delete().eq('id', item.id);
+        if (error){ console.error('Supabase delete error:', error); alert('Verwijderen mislukt: ' + (error.message||error)); return; }
+        // Update local state and UI
+        if (Array.isArray(state.list)){
+          const idx = state.list.findIndex(r => String(r.id) === String(item.id));
+          if (idx >= 0) state.list.splice(idx, 1);
+        }
+        renderList();
+        closeModal();
+        window.sfSetStatus && window.sfSetStatus('Traject verwijderd', 'ok');
+      };
+    }
+
       // Prune unknown columns based on existing item keys (prevents Supabase schema errors)
       const allowed = new Set(Object.keys(item || {}));
       for (const k of Object.keys(payload)) {
@@ -404,6 +434,80 @@ function parseDateNL(val){
       window.sfSetStatus && window.sfSetStatus('Traject bijgewerkt', 'ok');
     };
   }
+
+  // Fallback modal if the primary edit/create modal does not exist
+  function ensureFallbackModal(){
+    if (document.getElementById('fallback-traj-modal')) return;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="modal" id="fallback-traj-modal" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <h3 id="fb-title">Traject</h3>
+          <div style="display:flex; gap:8px">
+            <button id="fb-cancel" class="btn-secondary">Annuleren</button>
+            <button id="fb-save" class="btn-accent">Opslaan</button>
+            <button id="fb-close" class="icon-btn" aria-label="Sluiten">✖</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field"><label>Type</label><input id="fb-type" class="filter-input"/></div>
+            <div class="field"><label>Status</label><input id="fb-status" class="filter-input"/></div>
+            <div class="field"><label>Start</label><input id="fb-start" type="date" class="filter-input"/></div>
+            <div class="field"><label>Eind</label><input id="fb-eind" type="date" class="filter-input"/></div>
+            <div class="field"><label>Eigenaar</label><input id="fb-eigenaar" class="filter-input"/></div>
+            <div class="field"><label>Begeleider</label><input id="fb-begeleider" class="filter-input"/></div>
+            <div class="field"><label>Begroot €</label><input id="fb-begroot" class="filter-input"/></div>
+            <div class="field span-2"><label>Notities</label><textarea id="fb-note" class="filter-input" rows="5"></textarea></div>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap.firstElementChild);
+  }
+
+  function openEditFallback(item){
+    ensureFallbackModal();
+    const m = document.getElementById('fallback-traj-modal');
+    document.getElementById('fb-title').textContent = (item.titel || item.type || 'Traject') + ' (fallback)';
+    const set = (id, v)=>{ const el=document.getElementById(id); if (el) el.value = v ?? ''; };
+    set('fb-type', item.type);
+    set('fb-status', item.status);
+    set('fb-start', item.start_datum);
+    set('fb-eind', item.eind_datum);
+    set('fb-eigenaar', item.eigenaar);
+    set('fb-begeleider', item.begeleider);
+    set('fb-begroot', item.begroot_eur ?? '');
+    set('fb-note', item.notities);
+    m.classList.add('open');
+    document.getElementById('fb-close').onclick = ()=> m.classList.remove('open');
+    document.getElementById('fb-cancel').onclick = ()=> m.classList.remove('open');
+    document.getElementById('fb-save').onclick = async ()=>{
+      const payload = {
+        titel: document.getElementById('fb-type')?.value || 'Traject',
+        type: document.getElementById('fb-type')?.value || null,
+        status: document.getElementById('fb-status')?.value || 'Intake',
+        start_datum: document.getElementById('fb-start')?.value || null,
+        eind_datum: document.getElementById('fb-eind')?.value || null,
+        eigenaar: document.getElementById('fb-eigenaar')?.value || null,
+        begeleider: document.getElementById('fb-begeleider')?.value || null,
+        notities: document.getElementById('fb-note')?.value || null
+      };
+      // prune keys not in item (schema-safe)
+      const allowed = new Set(Object.keys(item || {}));
+      for (const k of Object.keys(payload)) if (!allowed.has(k)) delete payload[k];
+
+      const { error } = await supabase.from('trajecten').update(payload).eq('id', item.id);
+      if (error){ console.error('Supabase update error:', error); alert('Opslaan mislukt: ' + (error.message||error)); return; }
+      // local reflect
+      const idx = state.list.findIndex(r => String(r.id) === String(item.id));
+      if (idx >= 0) state.list[idx] = { ...state.list[idx], ...payload };
+      renderList();
+      m.classList.remove('open');
+      window.sfSetStatus && window.sfSetStatus('Traject bijgewerkt', 'ok');
+    };
+  }
+
+
 
 
   function extractPlaats(postadres=''){
