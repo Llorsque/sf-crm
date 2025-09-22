@@ -105,3 +105,6 @@ h1{ font-size:1.4rem; margin:0 }
 /* Enhancements: clickable traject link in details */
 .kv a.link-traject { text-decoration: underline; font-weight: 600; }
 .kv a.link-traject:hover { text-decoration: none; }
+
+.traj-card{ cursor:pointer; transition: box-shadow .15s ease; }
+.traj-card:hover{ box-shadow:0 6px 20px rgba(2,6,23,.08); }

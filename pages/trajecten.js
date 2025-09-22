@@ -252,17 +252,20 @@ function parseDateNL(val){
   const m2 = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m2) return v; // already ISO
   return null;
-    // Bind clicks to open edit modal
-    $('#list').querySelectorAll('.traj-card').forEach(card=>{
-      card.addEventListener('click', (ev)=>{
-        if (ev.target.closest('button, a, input, select, textarea')) return;
-        const id = card.getAttribute('data-id');
-        const item = rows.find(r => String(r.id) === String(id));
-        if (item) openEdit(item);
-      });
-    });
-
 }
+
+  // Delegated click to open edit modal from tiles
+  app.addEventListener('click', function(ev){
+    const card = ev.target.closest('article.traj-card');
+    if (!card || !app.contains(card)) return;
+    if (ev.target.closest('button, a, input, select, textarea')) return;
+    const id = card.getAttribute('data-id');
+    const item = state.list && Array.isArray(state.list) ? state.list.find(r => String(r.id) === String(id)) : null;
+    if (!item){ console.warn('[traj] no item for id', id); return; }
+    if (typeof openEdit === 'function') openEdit(item);
+  });
+
+
   function calcCoverage(){
   const begroot = parseMoney($('#f-begroot').value);
 
@@ -330,16 +333,18 @@ function parseDateNL(val){
     closeModal();
     document.getElementById('f-status').value=''; await init();
   }
-  // === Edit existing traject using the same modal ===
   function openEdit(item){
-    $('#modal-overlay').classList.add('show');
-    $('#modal').classList.add('open');
+    const overlay = $('#modal-overlay');
+    const modal = $('#modal');
+    if (!overlay || !modal){ console.error('[traj] modal missing'); return; }
+    overlay.classList.add('show');
+    modal.classList.add('open');
     const head = $('#modal .modal-head h3'); if (head) head.textContent = 'Traject bewerken';
-    // Disable club switch for edit
-    $('#club-q').value = (item.club_naam||'') + (item.club_nr ? (' (#'+item.club_nr+')') : '');
-    $('#club-q').setAttribute('disabled','disabled');
-    $('#club-dd').innerHTML = '';
-    // Prefill
+    if ($('#club-q')){
+      $('#club-q').value = (item.club_naam||'') + (item.club_nr ? (' (#'+item.club_nr+')') : '');
+      $('#club-q').setAttribute('disabled','disabled');
+    }
+    if ($('#club-dd')) $('#club-dd').innerHTML = '';
     const moneyFmt = (v)=> v==null ? '' : Number(v).toLocaleString('nl-NL',{ minimumFractionDigits:2, maximumFractionDigits:2 });
     const set = (sel,val)=> { const el = $(sel); if (el) el.value = (val ?? ''); };
     set('#f-type', item.type || '');
@@ -360,17 +365,13 @@ function parseDateNL(val){
     set('#f-eigen-eur', moneyFmt(item.eigen_eur));
     set('#f-last', item.laatste_update || '');
     set('#f-note', item.notities || '');
-    // coverage
     ['f-begroot','f-fin-pct','f-fin-eur','f-eigen-pct','f-eigen-eur'].forEach(id=>{
-      $('#'+id).addEventListener('input', calcCoverage);
+      const el = $('#'+id); if (el) el.addEventListener('input', calcCoverage);
     });
-    calcCoverage();
-
-    // Buttons
-    $('#modal-close').onclick = closeModal;
-    $('#modal-cancel').onclick = closeModal;
-
-    $('#modal-save').onclick = async function(){
+    try{ calcCoverage(); }catch(e){}
+    if ($('#modal-close')) $('#modal-close').onclick = closeModal;
+    if ($('#modal-cancel')) $('#modal-cancel').onclick = closeModal;
+    if ($('#modal-save')) $('#modal-save').onclick = async function(){
       const payload = {
         titel: $('#f-type')?.value || 'Traject',
         type: $('#f-type')?.value || null,
@@ -390,11 +391,11 @@ function parseDateNL(val){
       };
       const { error } = await supabase.from('trajecten').update(payload).eq('id', item.id);
       if (error){ console.error('Supabase update error:', error); alert('Opslaan mislukt: ' + (error.message||error)); return; }
-      const idx = state.list.findIndex(r => r.id === item.id);
+      const idx = state.list.findIndex(r => String(r.id) === String(item.id));
       if (idx >= 0) state.list[idx] = { ...state.list[idx], ...payload };
       renderList();
       closeModal();
-      if (window.sfSetStatus) window.sfSetStatus('Traject bijgewerkt', 'ok');
+      window.sfSetStatus && window.sfSetStatus('Traject bijgewerkt', 'ok');
     };
   }
 
